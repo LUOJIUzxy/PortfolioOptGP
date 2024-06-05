@@ -3,7 +3,7 @@
 from datetime import datetime
 import pandas as pd
 
-file_path = '../test_data/Forex/EUR_EOD/eur_usd_eod.csv'
+file_path = './Forex/EUR_EOD/eur_usd_eod.csv'
 df = pd.read_csv(file_path)
 # Convert the 'date' column to datetime
 df['date'] = pd.to_datetime(df['date'])
@@ -28,7 +28,7 @@ monthly_data = [recent_six_months_data[recent_six_months_data['date'].dt.month =
 for i, month_df in enumerate(monthly_data):
     month = (start_month - i - 1) % 12 + 1
     year = (most_recent_date.year - 1) if month > start_month else most_recent_date.year
-    month_df.to_csv(f'../test_data/Forex/EUR_EOD/EUR_month_{year}_{month}.csv', index=False)
+    month_df.to_csv(f'./Forex/EUR_EOD/EUR_month_{year}_{month}.csv', index=False)
 
 monthly_data[0].head(), monthly_data[1].head(), monthly_data[2].head(), monthly_data[3].head(), monthly_data[4].head(), monthly_data[5].head()
 
@@ -37,7 +37,7 @@ monthly_data[0].head(), monthly_data[1].head(), monthly_data[2].head(), monthly_
 from datetime import datetime
 import pandas as pd
 
-file_path = '../test_data/Crypto/BTC_EOD/btc_usd_eod.csv'
+file_path = './Crypto/BTC_EOD/btc_usd_eod.csv'
 df = pd.read_csv(file_path)
 # Convert the 'date' column to datetime
 df['date'] = pd.to_datetime(df['date'])
@@ -62,17 +62,17 @@ monthly_data = [recent_six_months_data[recent_six_months_data['date'].dt.month =
 for i, month_df in enumerate(monthly_data):
     month = (start_month - i - 1) % 12 + 1
     year = (most_recent_date.year - 1) if month > start_month else most_recent_date.year
-    month_df.to_csv(f'../test_data/Crypto/BTC_EOD/BTC_month_{year}_{month}.csv', index=False)
+    month_df.to_csv(f'./Crypto/BTC_EOD/BTC_month_{year}_{month}.csv', index=False)
 
 monthly_data[0].head(), monthly_data[1].head(), monthly_data[2].head(), monthly_data[3].head(), monthly_data[4].head(), monthly_data[5].head()
 
 # %%
 import pandas as pd
 # Load the uploaded COINBASE data
-coinbase_file_path = '../test_data/Stocks/COINBASE_EOD/COIN_month_2024_3.csv'
+coinbase_file_path = './Stocks/COINBASE_EOD/COIN_month_2024_3.csv'
 coinbase_df = pd.read_csv(coinbase_file_path)
 
-file_path = '../test_data/Crypto/BTC_EOD/BTC_month_2024_3.csv'
+file_path = './Crypto/BTC_EOD/BTC_month_2024_3.csv'
 df = pd.read_csv(file_path) 
 
 # Convert 'date' column to datetime in both DataFrames
@@ -100,14 +100,14 @@ import pandas as pd
 # Process COINBASE data for the first four months of 2024
 for i in range(1, 5):
     # Assuming 'df' contains the BTC data as initially loaded and reversed
-    btc_file_path = f'../test_data/Crypto/BTC_EOD/BTC_month_2024_{i}.csv'
+    btc_file_path = f'./Crypto/BTC_EOD/BTC_month_2024_{i}.csv'
     print(btc_file_path)
     btc_df = pd.read_csv(btc_file_path)
     btc_df['date'] = pd.to_datetime(btc_df['date'])
     btc_df = btc_df.iloc[::-1]  # Reverse BTC data to have dates in ascending order
 
     # Load the COINBASE data
-    coinbase_file_path = f'../test_data/Stocks/COINBASE_EOD/COIN_month_2024_{i}.csv'
+    coinbase_file_path = f'./Stocks/COINBASE_EOD/COIN_month_2024_{i}.csv'
     coinbase_df = pd.read_csv(coinbase_file_path)
     coinbase_df['date'] = pd.to_datetime(coinbase_df['date'])
 
@@ -127,7 +127,7 @@ for i in range(1, 5):
     print(merged_df.head())
 
     # Optional: save the merged dataframe for each month if needed
-    merged_df.to_csv(f'../test_data/Merged/Merged_BTC_COIN_month_2024_{i}.csv', index=False)
+    merged_df.to_csv(f'./Merged/Merged_BTC_COIN_month_2024_{i}.csv', index=False)
    
 
 
@@ -139,7 +139,7 @@ import pandas as pd
 import gpflow
 
 for i in range(1, 5):
-    df_merged = pd.read_csv(f'../test_data/Merged/Merged_BTC_COIN_month_2024_{i}.csv')
+    df_merged = pd.read_csv(f'./Merged/Merged_BTC_COIN_month_2024_{i}.csv')
     # Extract the aligned 'open' prices
     Y = df_merged['open_coin'].values
     X = df_merged['open_btc'].values
@@ -160,7 +160,7 @@ combined_df_list = []
 # Load and combine the four merged CSV files
 for i in range(1, 5):
     # Load the merged CSV file
-    merged_file_path = f'../test_data/Merged/Merged_BTC_COIN_month_2024_{i}.csv'
+    merged_file_path = f'./Merged/Merged_BTC_COIN_month_2024_{i}.csv'
     merged_df = pd.read_csv(merged_file_path)
     
     # Append the dataframe to the list
@@ -197,7 +197,7 @@ opt_logs = opt.minimize(
 
 # %%
 # Load Test Data 
-btc_file_path = '../test_data/Crypto/BTC_EOD/BTC_month_2024_5.csv'
+btc_file_path = './Crypto/BTC_EOD/BTC_month_2024_5.csv'
 btc_df_test = pd.read_csv(btc_file_path)
 btc_df_test['date'] = pd.to_datetime(btc_df_test['date'])
 btc_df_test = btc_df_test.iloc[::-1]
@@ -233,5 +233,109 @@ plt.fill_between(btc_df_test['open'], f_lower[:, 0], f_upper[:, 0], alpha=0.1, c
 plt.plot(btc_df_test['open'], y_lower, ".", color="C0", label="Y 95percent confidence")
 plt.plot(btc_df_test['open'], y_upper, ".", color="C0")
 plt.fill_between(btc_df_test['open'], y_lower[:, 0], y_upper[:, 0], alpha=0.1, color="C0")
+plt.legend()
+# %%
+# Time Series Forecasting with GPflow
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+
+import gpflow
+# Function to convert 'MM-DD' format to day of the year
+def convert_to_day_of_year(date_str):
+    return (pd.to_datetime('2024-' + date_str)).day_of_year
+# Initialize a list to store the combined dataframes
+combined_df_list = []
+
+# Load and combine the four merged CSV files
+for i in range(1, 5):
+    # Load the merged CSV file
+    merged_file_path = f'./Merged/Merged_BTC_COIN_month_2024_{i}.csv'
+    merged_df = pd.read_csv(merged_file_path)
+    
+    # Append the dataframe to the list
+    combined_df_list.append(merged_df)
+
+# Concatenate all the dataframes
+combined_df = pd.concat(combined_df_list, ignore_index=True)
+
+combined_df['date'] = pd.to_datetime(combined_df['date'])
+combined_df['month_day'] = combined_df['date'].dt.strftime('%m-%d')
+# Convert 'MM-DD' format to day of the year
+combined_df['day_of_year'] = combined_df['month_day'].apply(convert_to_day_of_year)
+
+# Extract the aligned 'open' prices
+Y_combined = combined_df['open_coin'].values
+# Extract the new 'day_of_year' column as the new X input
+X_combined = combined_df['day_of_year'].values
+
+# Reshape to 2D arrays if needed
+Y_combined_reshaped = Y_combined.reshape(-1, 1)
+X_combined_reshaped = X_combined.reshape(-1, 1)
+
+X_combined_tf = tf.convert_to_tensor(X_combined_reshaped, dtype=tf.float64)
+# Display the combined shapes
+X_combined_tf.shape, Y_combined_reshaped.shape
+
+
+plt.plot(X_combined_tf, Y_combined_reshaped, label='COINBASE Open Price')
+plt.xlabel('Date')
+plt.ylabel('Open Price')
+plt.title('COINBASE Open Price Over Time')
+
+# Set x-ticks to show labels once per ten days
+# ticks_to_use = np.arange(0, len(combined_df['date']), 10)
+# plt.xticks(ticks_to_use, combined_df['date'].dt.strftime('%m-%d').iloc[ticks_to_use], rotation=45)
+
+plt.legend()
+plt.show()
+# %%
+model = gpflow.models.GPR(
+    data=(X_combined_tf, Y_combined_reshaped),
+    kernel=gpflow.kernels.SquaredExponential(),
+    mean_function=gpflow.mean_functions.Linear(),
+)
+
+# %%
+opt = gpflow.optimizers.Scipy()
+opt_logs = opt.minimize(
+    model.training_loss, model.trainable_variables, options=dict(maxiter=100)
+)
+
+# %%
+# Generate test points for the next 28 days
+Xplot = np.linspace(1, 365, 240)[: , None]
+Xplot_tf = tf.convert_to_tensor(Xplot, dtype=tf.float64)
+Xplot_tf.shape
+
+# %%
+f_mean, f_var = model.predict_f(Xplot_tf, full_cov=False)
+y_mean, y_var = model.predict_y(Xplot_tf)
+
+f_lower = f_mean - 1.96 * np.sqrt(f_var)
+f_upper = f_mean + 1.96 * np.sqrt(f_var)
+y_lower = y_mean - 1.96 * np.sqrt(y_var)
+y_upper = y_mean + 1.96 * np.sqrt(y_var)
+
+# %%
+# X_combined_reshaped is the training data ((83, 1), (83, 1))
+# Y_combined_reshaped is the training data ((83, 1), (83, 1))
+# btc_df_test['open'] is the test data ((28, 1), (28, 1))
+
+plt.figure(figsize=(12, 6))
+plt.plot(X_combined_tf, Y_combined_reshaped, "kx", mew=2, label="Training data")
+plt.plot(Xplot_tf, f_mean, "-", color="C0", label="Mean")
+plt.plot(Xplot_tf, f_lower, "--", color="C0", label="f 95percent confidence")
+plt.plot(Xplot_tf, f_upper, "--", color="C0")
+plt.fill_between(Xplot_tf[:, 0], f_lower[:, 0], f_upper[:, 0], alpha=0.1, color="C0")
+
+plt.plot(Xplot_tf, y_lower, ".", color="C0", label="Y 95percent confidence")
+plt.plot(Xplot_tf, y_upper, ".", color="C0")
+plt.fill_between(Xplot_tf[:, 0], y_lower[:, 0], y_upper[:, 0], alpha=0.1, color="C0")
+
+# Set x-ticks to show labels correctly
+
 plt.legend()
 # %%

@@ -1,4 +1,53 @@
 # %%
+# Define Ticker and Timeframe
+ticker = 'META'
+timeframe = '1D'
+
+train_start_date = '2021-04-14'
+train_end_date = '2023-12-29'
+test_start_date = '2024-01-02'
+test_end_date = '2024-06-07'
+
+# %%
+from matplotlib import pyplot as plt
+from matplotlib import rc
+# import seaborn as sns
+# rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+## for Palatino and other serif fonts use:
+rc('font',**{'family':'serif','serif':['Palatino']})
+rc('text', usetex=True)
+# plt.style.use('ggplot')
+SMALL_SIZE = 8
+MEDIUM_SIZE = 12
+BIGGER_SIZE = 20
+
+
+rc('font', size=MEDIUM_SIZE)          # controls default text sizes
+rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
+rc('axes', labelsize=BIGGER_SIZE)    # fontsize of the x and y labels
+rc('xtick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
+rc('figure', titlesize=MEDIUM_SIZE)  # fontsize of the figure titles
+
+# %%
+import json
+import requests
+import pandas as pd
+
+# URL for the API request 640b60e3d05070.82010518
+url = f'https://eodhd.com/api/eod/{ticker}.US?period=d&api_token=640b60e3d05070.82010518&fmt=json&from={train_start_date}&to={test_end_date}'
+#url = 'https://eodhd.com/api/eod/EUR.FOREX?order=d&api_token=640b60e3d05070.82010518&fmt=json'
+
+#url = 'https://eodhd.com/api/eod/SOL-USD.CC?api_token=662b7114196544.78541146&order=d&fmt=json'
+# Fetching the data from the API
+response = requests.get(url)
+data = response.json()
+df = pd.DataFrame(data)
+
+csv_file_path = f'./Stocks/{ticker}_EOD/{ticker}_us_test.csv'
+df.to_csv(csv_file_path, index=False)
+# %%
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -8,14 +57,12 @@ from pandas.tseries.offsets import DateOffset
 
 # Function to convert date to numerical value (e.g., day of the year)
 def convert_to_day_of_year(date):
-    start_date = pd.Timestamp('2021-04-14')
+    start_date = pd.Timestamp(train_start_date)
     return (date - start_date).days
 
-# Load the combined data
-file_path = './Stocks/COINBASE_EOD/coin_us_eod.csv'
+file_path = f'./Stocks/{ticker}_EOD/{ticker}_us_test.csv'
 combined_df = pd.read_csv(file_path)
 
-# Convert 'date' column to datetime
 combined_df['date'] = pd.to_datetime(combined_df['date'])
 
 # Extract 'open' prices and convert dates to day of the year
@@ -26,33 +73,78 @@ combined_df['open'] = (combined_df['open'] - combined_df['open'].mean()) / combi
 Y_combined = combined_df['open'].values
 X_combined = combined_df['day_of_year'].values
 
-# Reshape to 2D arrays as required by GPflow
 Y_combined_reshaped = Y_combined.reshape(-1, 1)
 X_combined_reshaped = X_combined.reshape(-1, 1)
 
-# Convert to TensorFlow tensors
 X_combined_tf = tf.convert_to_tensor(X_combined_reshaped, dtype=tf.float64)
 Y_combined_tf = tf.convert_to_tensor(Y_combined_reshaped, dtype=tf.float64)
 
-# Display the combined shapes
 print(X_combined_tf.shape, Y_combined_reshaped.shape)
 
-# Plot the data
+
+# Plot 
+plt.style.use('ggplot')
 plt.figure(figsize=(12, 6))
-plt.plot(combined_df['date'], Y_combined, label='COINBASE Open Price')
+plt.plot(combined_df['date'], Y_combined, label=f'{ticker} Open Price')
 plt.xlabel('Date')
 plt.ylabel('Open Price')
-plt.title('COINBASE Open Price Over Time')
+plt.title(f'{ticker} Open Price Over Time')
 plt.legend()
 plt.grid(True)
 plt.show()
 
 # %%
+# huafen training and testing data
+import numpy as np
+import matplotlib.pyplot as plt
+import gpflow
+import pandas as pd
+from gpflow.utilities import print_summary, set_trainable
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+
+# Assuming combined_df is your DataFrame with columns 'date' and 'open_price'
+combined_df['date'] = pd.to_datetime(combined_df['date'])
+
+# Split the data
+train_start_date = '2021-04-14'
+train_end_date = '2023-12-29'
+test_start_date = '2024-01-02'
+test_end_date = '2024-06-07'
+
+# Training data
+train_mask = (combined_df['date'] >= train_start_date) & (combined_df['date'] <= train_end_date)
+train_df = combined_df[train_mask]
+
+# Test data
+test_mask = (combined_df['date'] >= test_start_date) & (combined_df['date'] <= test_end_date)
+test_df = combined_df[test_mask]
+
+# Prepare data for the model
+X_train = (train_df['date'] - pd.to_datetime(train_start_date)).dt.days.values[:, None]
+Y_train = train_df['open'].values[:, None]
+
+X_test = (test_df['date'] - pd.to_datetime(train_start_date)).dt.days.values[:, None]
+Y_test = test_df['open'].values[:, None]
+
+# Scale the data
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Convert to TensorFlow tensors
+import tensorflow as tf
+X_train_tf = tf.convert_to_tensor(X_train, dtype=tf.float64)
+Y_train_tf = tf.convert_to_tensor(Y_train, dtype=tf.float64)
+X_test_tf = tf.convert_to_tensor(X_test, dtype=tf.float64)
+
+# %%
 
 # GPflow model
 model = gpflow.models.GPR(
-    data=(X_combined_tf, Y_combined_reshaped),
-    kernel=gpflow.kernels.SquaredExponential(),
+    data=(X_train_tf, Y_train_tf),
+    likelihood=gpflow.likelihoods.Gaussian(variance=1e-4),
+    kernel=gpflow.kernels.Linear() * gpflow.kernels.SquaredExponential(),
     mean_function=gpflow.mean_functions.Polynomial(2),
 )
 
@@ -61,18 +153,31 @@ opt = gpflow.optimizers.Scipy()
 opt_logs = opt.minimize(
     model.training_loss, model.trainable_variables, options=dict(maxiter=100)
 )
+
+# Set likelihood variance training to False
+set_trainable(model.likelihood.variance, False)
+
+mean_test, variance_test = model.predict_f(X_test_tf)
+# print(mean_test)
+
+# Calculate the MSE on the test data
+mse_test = mean_squared_error(Y_test, mean_test.numpy())
+print(f'Mean Squared Error on test data: {mse_test}')
+
+
 # Calculate the last day in the training data
 last_day = X_combined.max()
 
 print(last_day)
 # %%
 # Generate test points for the next 240 days from the last training date
-Xplot = np.linspace(last_day, last_day + 245, 245)[:, None]
-Xplot_tf = tf.convert_to_tensor(Xplot, dtype=tf.float64)
+Xplot = np.linspace(last_day, last_day + 240, 240)[:, None]
+Xplot_tf = tf.convert_to_tensor(Xplot, dtype=tf.float64) 
+X_combined_future = np.vstack([X_test_tf, Xplot_tf])
 
 # Predictions
-f_mean, f_var = model.predict_f(Xplot_tf, full_cov=False)
-y_mean, y_var = model.predict_y(Xplot_tf)
+f_mean, f_var = model.predict_f(X_combined_future, full_cov=False)
+y_mean, y_var = model.predict_y(X_combined_future)
 
 # Confidence intervals
 f_lower = f_mean - 1.96 * np.sqrt(f_var)
@@ -82,29 +187,31 @@ y_upper = y_mean + 1.96 * np.sqrt(y_var)
 
 # Plot predictions
 plt.figure(figsize=(12, 6))
-plt.plot(X_combined_tf, Y_combined_reshaped, "kx", mew=2, label="Training data")
-plt.plot(Xplot_tf, f_mean, "-", color="C0", label="Mean")
-plt.plot(Xplot_tf, f_lower, "--", color="C0", label="f 95% confidence")
-plt.plot(Xplot_tf, f_upper, "--", color="C0")
-plt.fill_between(Xplot_tf[:, 0], f_lower[:, 0], f_upper[:, 0], alpha=0.1, color="C0")
+plt.plot(X_train, Y_train_tf, "kx", mew=2, label="Training data")
+plt.plot(X_test, Y_test, 'bo', mew=2, label='Test Data')
+plt.plot(X_combined_future, f_mean, "-", color="C0", label="Mean")
+plt.plot(X_combined_future, f_lower, "--", color="C0", label="f 95% confidence")
+plt.plot(X_combined_future, f_upper, "--", color="C0")
+plt.fill_between(X_combined_future[:, 0], f_lower[:, 0], f_upper[:, 0], alpha=0.1, color="C0")
 
-plt.plot(Xplot_tf, y_lower, ".", color="C0", label="Y 95% confidence")
-plt.plot(Xplot_tf, y_upper, ".", color="C0")
-plt.fill_between(Xplot_tf[:, 0], y_lower[:, 0], y_upper[:, 0], alpha=0.1, color="C0")
+plt.plot(X_combined_future, y_lower, ".", color="C0", label="Y 95% confidence")
+plt.plot(X_combined_future, y_upper, ".", color="C0")
+plt.fill_between(X_combined_future[:, 0], y_lower[:, 0], y_upper[:, 0], alpha=0.1, color="C0")
 
 # Set x-ticks to show labels correctly
-start_date = pd.Timestamp('2021-04-14')
-num_labels = 60
+start_date = pd.Timestamp(train_start_date)
+num_labels = 48
 x_ticks = np.linspace(0, 1400, num_labels)
 labels = pd.date_range(start_date, periods=num_labels, freq="M").strftime("%b %Y")
 
 plt.xticks(x_ticks, labels, rotation=45)
 plt.xlabel('Date')
 plt.ylabel('Normalized Open Price')
-plt.title('GP Regression on COINBASE Open Price')
+plt.title(f'GP Regression on {ticker} Open Price')
 plt.legend()
 plt.grid(True)
 plt.show()
+
 
 
 # %%
@@ -239,15 +346,16 @@ import gpflow
 import pandas as pd
 from gpflow.utilities import print_summary, set_trainable
 from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
 
 # Assuming combined_df is your DataFrame with columns 'date' and 'open_price'
 combined_df['date'] = pd.to_datetime(combined_df['date'])
 
-# Split the data
-train_start_date = '2021-04-14'
-train_end_date = '2023-12-29'
-test_start_date = '2024-01-02'
-test_end_date = '2024-06-07'
+# # Split the data
+# train_start_date = '2021-04-14'
+# train_end_date = '2023-12-29'
+# test_start_date = '2024-01-02'
+# test_end_date = '2024-06-07'
 
 # Training data
 train_mask = (combined_df['date'] >= train_start_date) & (combined_df['date'] <= train_end_date)
@@ -258,11 +366,16 @@ test_mask = (combined_df['date'] >= test_start_date) & (combined_df['date'] <= t
 test_df = combined_df[test_mask]
 
 # Prepare data for the model
-X_train = (train_df['date'] - pd.to_datetime('2021-04-14')).dt.days.values[:, None]
+X_train = (train_df['date'] - pd.to_datetime(train_start_date)).dt.days.values[:, None]
 Y_train = train_df['open'].values[:, None]
 
-X_test = (test_df['date'] - pd.to_datetime('2021-04-14')).dt.days.values[:, None]
+X_test = (test_df['date'] - pd.to_datetime(train_start_date)).dt.days.values[:, None]
 Y_test = test_df['open'].values[:, None]
+
+# Scale the data
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
 # Convert to TensorFlow tensors
 import tensorflow as tf
@@ -272,8 +385,11 @@ X_test_tf = tf.convert_to_tensor(X_test, dtype=tf.float64)
 
 # %%
 # Define the SVGP model
+
+combined_kernel = combined_kernel = gpflow.kernels.Exponential()
+
 model = gpflow.models.SVGP(
-    kernel=gpflow.kernels.RationalQuadratic(),
+    kernel=combined_kernel,
     likelihood=gpflow.likelihoods.Gaussian(variance=1e-4),
     inducing_variable=np.linspace(0, X_train.max(), 1000)[:, None],
     num_data=len(X_train_tf),
@@ -297,6 +413,7 @@ print_summary(model, "notebook")
 # Prediction phase
 # Predict on the test data
 mean_test, variance_test = model.predict_f(X_test_tf)
+print(mean_test)
 
 # Calculate the MSE on the test data
 mse_test = mean_squared_error(Y_test, mean_test.numpy())
@@ -307,23 +424,29 @@ last_day = X_train.max()
 
 # Generate test points for the next 240 days from the last training date
 X_pred = np.linspace(last_day, last_day + 240, 240)[:, None]
+X_pred_scaled = scaler.transform(X_pred)
+X_combined_future = np.vstack([X_test_tf, X_pred_scaled])
 
 # Make predictions
-mean, variance = model.predict_f(X_pred)
+mean, variance = model.predict_f(tf.convert_to_tensor(X_combined_future, dtype=tf.float64))
 
 # Calculate the confidence interval
 lower = mean - 1.96 * np.sqrt(variance)
 upper = mean + 1.96 * np.sqrt(variance)
 
+num_days = len(X_test) + len(X_pred)
+dates_combined = pd.date_range(start=test_start_date, periods=num_days, freq='D')
+
+
 # Plot the results
 plt.figure(figsize=(12, 6))
 plt.plot(train_df['date'], Y_train, 'kx', mew=2, label='Training Data')
 plt.plot(test_df['date'], Y_test, 'bo', mew=2, label='Test Data')
-plt.plot(pd.to_datetime('2021-04-14') + pd.to_timedelta(X_pred.squeeze(), unit='D'), mean, 'C0', lw=2, label='Mean Prediction')
-plt.fill_between(pd.to_datetime('2021-04-14') + pd.to_timedelta(X_pred.squeeze(), unit='D'), lower.numpy().squeeze(), upper.numpy().squeeze(), color='C0', alpha=0.2, label='95% Confidence Interval')
+plt.plot(dates_combined, mean.numpy().flatten(), 'C0', lw=2, label='Mean Prediction')
+plt.fill_between(dates_combined, lower.numpy().flatten(), upper.numpy().flatten(), color='C0', alpha=0.2, label='95% Confidence Interval')
 plt.xlabel('Date')
 plt.ylabel('Open Price')
-plt.title('COINBASE Open Price Prediction')
+plt.title(f'{ticker} Open Price Prediction')
 plt.legend()
 plt.grid(True)
 plt.show()

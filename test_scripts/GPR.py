@@ -72,7 +72,7 @@ class StockPredictor:
 
     def process_data(self, ticker, period):
         # self.fetch_and_save_data(ticker, period)
-        file_path = f'../test_data/Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
+        file_path = f'./Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
         df['day_of_year'] = df['date'].apply(self.convert_to_day_of_year)
@@ -136,17 +136,26 @@ class StockPredictor:
         return best_kernel, best_mse, best_model
 
     def predict_combined(self, alpha, beta, daily_model, weekly_model, monthly_model, X):
-        mean_daily, var_daily = daily_model.predict_f(X)
-        mean_weekly, var_weekly = weekly_model.predict_f(X)
-        mean_monthly, var_monthly = monthly_model.predict_f(X)
-        combined_mean = alpha * mean_daily + beta * mean_weekly + (1 - alpha - beta) * mean_monthly
-        combined_variance = alpha * var_daily + beta * var_weekly + (1 - alpha - beta) * var_monthly
-        return combined_mean, combined_variance
+        f_mean_daily, f_var_daily = daily_model.predict_f(X, full_cov=False)
+        f_mean_weekly, f_var_weekly = weekly_model.predict_f(X, full_cov=False)
+        f_mean_monthly, f_var_monthly = monthly_model.predict_f(X, full_cov=False)
+
+        y_mean_daily, y_var_daily = daily_model.predict_y(X)
+        y_mean_weekly, y_var_weekly = weekly_model.predict_y(X)
+        y_mean_monthly, y_var_monthly = monthly_model.predict_y(X)
+        f_combined_mean = alpha * f_mean_daily + beta * f_mean_weekly + (1 - alpha - beta) * f_mean_monthly
+        f_combined_variance = alpha * f_var_daily + beta * f_var_weekly + (1 - alpha - beta) * f_var_monthly
+
+        y_combined_mean = alpha * y_mean_daily + beta * y_mean_weekly + (1 - alpha - beta) * y_mean_monthly
+        y_combined_variance = alpha * y_var_daily + beta * y_var_weekly + (1 - alpha - beta) * y_var_monthly
+
+
+        return f_combined_mean, f_combined_variance, y_combined_mean, y_combined_variance
 
     def loss_fn(self, weights, daily_model, weekly_model, monthly_model, X, Y):
         alpha, beta = weights
-        combined_mean, _ = self.predict_combined(alpha, beta, daily_model, weekly_model, monthly_model, X)
-        mse = mean_squared_error(Y, combined_mean)
+        f_combined_mean, f_combined_variance, y_combined_mean, y_combined_variance = self.predict_combined(alpha, beta, daily_model, weekly_model, monthly_model, X)
+        mse = mean_squared_error(Y, f_combined_mean)
         return mse
 
     def generate_future_dates(self, df, period='d', total_days=90):
@@ -173,18 +182,38 @@ class StockPredictor:
 
         print(X_pred_tf.shape)
         return X_pred_tf
+    
+    def upsample_predictions(dates, predictions, period='d'):
+        upsampled_predictions = []
+        if period == 'w':
+            for date, pred in zip(dates, predictions):
+                upsampled_predictions.extend([pred] * 7)  # Repeat for 7 days
+        elif period == 'm':
+            for date, pred in zip(dates, predictions):
+                days_in_month = pd.Period(date.strftime('%Y-%m')).days_in_month
+                upsampled_predictions.extend([pred] * days_in_month)  # Repeat for days in the month
+        else:
+            upsampled_predictions = predictions  # No upsampling needed for daily
+        return np.array(upsampled_predictions)
 
-    def plot_pred_data(self, X_daily_tf, Y_daily_tf, X_combined_future, f_mean, f_lower, f_upper, title, mean, std, filename, best_model):
+    def plot_pred_data(self, X_daily_tf, Y_daily_tf, X_combined_future, f_mean, f_lower, f_upper, y_mean, y_lower, y_upper, title, mean, std, filename, best_model):
         Y_daily_tf = self.denormalize(Y_daily_tf, mean, std)
         f_mean = self.denormalize(f_mean, mean, std)
         f_lower = self.denormalize(f_lower, mean, std)
         f_upper = self.denormalize(f_upper, mean, std)
+        y_mean = self.denormalize(y_mean, mean, std)
+        y_lower = self.denormalize(y_lower, mean, std)
+        y_upper = self.denormalize(y_upper, mean, std)
         plt.figure(figsize=(12, 6))
         plt.plot(X_daily_tf, Y_daily_tf, "kx", mew=2, label="Training data")
-        plt.plot(X_combined_future, f_mean, "-", color="C0", label="Mean")
+        plt.plot(X_combined_future, f_mean, "-", color="C0", label="Predicted f Mean")
         plt.plot(X_combined_future, f_lower, "--", color="C0", label="f 95% confidence")
         plt.plot(X_combined_future, f_upper, "--", color="C0")
+        plt.plot(X_combined_future, y_mean, "-", color="C0", label="Predicted Y Mean")
+        plt.plot(X_combined_future, y_lower, ":", color="C1", label="y 95% confidence")
+        plt.plot(X_combined_future, y_upper, ":", color="C1")
         plt.fill_between(X_combined_future[:, 0], f_lower[:, 0], f_upper[:, 0], alpha=0.1, color="C0")
+        plt.fill_between(X_combined_future[:, 0], y_lower[:, 0], y_upper[:, 0], alpha=0.1, color="C1")
         start_date = pd.Timestamp(self.train_start_date)
         num_labels = 48
         x_ticks = np.linspace(0, 1400, num_labels)
@@ -214,30 +243,34 @@ class StockPredictor:
             for timeframe in timeframes:
                 X_tf, Y_tf, dates, mean, std = self.process_data(ticker, timeframe)
                 data[timeframe] = (X_tf, Y_tf, dates, mean, std)
-                self.plot_data(X_tf, Y_tf, dates, title=f'{ticker} - {timeframe}', mean=mean, std=std, filename=f'../plots/{ticker}_{timeframe}.png')
+                self.plot_data(X_tf, Y_tf, dates, title=f'{ticker} - {timeframe}', mean=mean, std=std, filename=f'./plots/{ticker}_{timeframe}.png')
             
             X_daily_tf, Y_daily_tf, _, mean_daily, std_daily = data['d']
             X_weekly_tf, Y_weekly_tf, _, mean_weekly, std_weekly = data['w']
             X_monthly_tf, Y_monthly_tf, _, mean_monthly, std_monthly = data['m']
 
-            print(X_daily_tf.shape, Y_daily_tf.shape)
-            print(X_weekly_tf.shape, Y_weekly_tf.shape)
-            print(X_monthly_tf.shape, Y_monthly_tf.shape)
-
             daily_kernel, daily_mse, daily_model = self.train_model(X_daily_tf, Y_daily_tf)
             weekly_kernel, weekly_mse, weekly_model = self.train_model(X_weekly_tf, Y_weekly_tf)
             monthly_kernel, monthly_mse, monthly_model = self.train_model(X_monthly_tf, Y_monthly_tf)
+            
+            print(f'{ticker} - Best Kernel Daily: {daily_kernel}, Best MSE Daily: {daily_mse}')
+            print(f'{ticker} - Best Kernel Weekly: {weekly_kernel}, Best MSE Weekly: {weekly_mse}')
+            print(f'{ticker} - Best Kernel Monthly: {monthly_kernel}, Best MSE Monthly: {monthly_mse}')
 
             alpha_opt, beta_opt = self.optimize_weights(daily_model, weekly_model, monthly_model, X_daily_tf, Y_daily_tf)
             
-            X_combined_daily = np.vstack([X_daily_tf, self.generate_future_dates(pd.read_csv(f'../test_data/Stocks/{ticker}_EOD/{ticker}_us_d.csv'), total_days=90)])
-            X_combined_weekly = np.vstack([X_weekly_tf, self.generate_future_dates(pd.read_csv(f'../test_data/Stocks/{ticker}_EOD/{ticker}_us_w.csv'), total_days=90, period='w')])
-            X_combined_monthly = np.vstack([X_monthly_tf, self.generate_future_dates(pd.read_csv(f'../test_data/Stocks/{ticker}_EOD/{ticker}_us_m.csv'), total_days=90, period='m')])
+            X_combined_daily = np.vstack([X_daily_tf, self.generate_future_dates(pd.read_csv(f'./Stocks/{ticker}_EOD/{ticker}_us_d.csv'), total_days=90)])
+            X_combined_weekly = np.vstack([X_weekly_tf, self.generate_future_dates(pd.read_csv(f'./Stocks/{ticker}_EOD/{ticker}_us_w.csv'), total_days=90, period='w')])
+            X_combined_monthly = np.vstack([X_monthly_tf, self.generate_future_dates(pd.read_csv(f'./Stocks/{ticker}_EOD/{ticker}_us_m.csv'), total_days=90, period='m')])
             
-            f_mean_daily, f_var_daily = self.predict_combined(1, 0, daily_model, weekly_model, monthly_model, X_combined_daily)
-            f_mean_weekly, f_var_weekly = self.predict_combined(0, 1, daily_model, weekly_model, monthly_model, X_combined_weekly)
-            f_mean_monthly, f_var_monthly = self.predict_combined(0, 0, daily_model, weekly_model, monthly_model, X_combined_monthly)
+            f_mean_daily, f_var_daily, y_mean_daily, y_var_daily = self.predict_combined(1, 0, daily_model, weekly_model, monthly_model, X_combined_daily)
+            f_mean_weekly, f_var_weekly, y_mean_weekly, y_var_weekly = self.predict_combined(0, 1, daily_model, weekly_model, monthly_model, X_combined_weekly)
+            f_mean_monthly, f_var_monthly, y_mean_monthly, y_var_monthly = self.predict_combined(0, 0, daily_model, weekly_model, monthly_model, X_combined_monthly)
 
+            print(f_mean_daily.shape, f_mean_weekly.shape, f_mean_monthly.shape)
+
+            # Upsample weekly and monthly predictions to daily frequency
+      
 
             f_lower_daily = f_mean_daily - 1.96 * np.sqrt(f_var_daily)
             f_upper_daily = f_mean_daily + 1.96 * np.sqrt(f_var_daily)
@@ -248,10 +281,19 @@ class StockPredictor:
             f_lower_monthly = f_mean_monthly - 1.96 * np.sqrt(f_var_monthly)
             f_upper_monthly = f_mean_monthly + 1.96 * np.sqrt(f_var_monthly)
 
+            y_lower_daily = y_mean_daily - 1.96 * np.sqrt(y_var_daily)
+            y_upper_daily = y_mean_daily + 1.96 * np.sqrt(y_var_daily)
 
-            self.plot_pred_data(X_daily_tf, Y_daily_tf, X_combined_daily, f_mean_daily, f_lower_daily, f_upper_daily, title=ticker, mean=mean_daily, std=std_daily, filename=f'../plots/{ticker}_GPR_predict_daily.png', best_model=daily_model)
-            self.plot_pred_data(X_weekly_tf, Y_weekly_tf, X_combined_weekly, f_mean_weekly, f_lower_weekly, f_upper_weekly, title=ticker, mean=mean_weekly, std=std_weekly, filename=f'../plots/{ticker}_GPR_predict_weekly.png', best_model=weekly_model)
-            self.plot_pred_data(X_monthly_tf, Y_monthly_tf, X_combined_monthly, f_mean_monthly, f_lower_monthly, f_upper_monthly, title=ticker, mean=mean_monthly, std=std_monthly, filename=f'../plots/{ticker}_GPR_predict_monthly.png', best_model=daily_model)
+            y_lower_weekly = y_mean_weekly - 1.96 * np.sqrt(y_var_weekly)
+            y_upper_weekly = y_mean_weekly + 1.96 * np.sqrt(y_var_weekly)
+
+            y_lower_monthly = y_mean_monthly - 1.96 * np.sqrt(y_var_monthly)
+            y_upper_monthly = y_mean_monthly + 1.96 * np.sqrt(y_var_monthly)
+
+
+            self.plot_pred_data(X_daily_tf, Y_daily_tf, X_combined_daily, f_mean_daily, f_lower_daily, f_upper_daily, y_mean_daily, y_lower_daily, y_upper_daily, title=ticker, mean=mean_daily, std=std_daily, filename=f'./plots/{ticker}_GPR_predict_daily.png', best_model=daily_model)
+            self.plot_pred_data(X_weekly_tf, Y_weekly_tf, X_combined_weekly, f_mean_weekly, f_lower_weekly, f_upper_weekly, y_mean_weekly, y_lower_weekly, y_upper_weekly, title=ticker, mean=mean_weekly, std=std_weekly, filename=f'./plots/{ticker}_GPR_predict_weekly.png', best_model=weekly_model)
+            self.plot_pred_data(X_monthly_tf, Y_monthly_tf, X_combined_monthly, f_mean_monthly, f_lower_monthly, f_upper_monthly, y_mean_monthly, y_lower_monthly, y_upper_monthly, title=ticker, mean=mean_monthly, std=std_monthly, filename=f'./plots/{ticker}_GPR_predict_monthly.png', best_model=daily_model)
            
             # print(f'Optimal weights for {ticker} GPR: alpha = {alpha_opt}, beta = {beta_opt}')
 
@@ -267,7 +309,7 @@ class StockPredictor:
             # f_lower_svgp = f_mean_svgp - 1.96 * np.sqrt(f_var_svgp)
             # f_upper_svgp = f_mean_svgp + 1.96 * np.sqrt(f_var_svgp)
 
-            # self.plot_pred_data(X_daily_tf, Y_daily_tf, X_combined_future, f_mean_svgp, f_lower_svgp, f_upper_svgp, title=ticker, mean=mean_daily, std=std_daily, filename=f'../plots/{ticker}_SVGP_predict.png', best_model=daily_model_svgp)
+            # self.plot_pred_data(X_daily_tf, Y_daily_tf, X_combined_future, f_mean_svgp, f_lower_svgp, f_upper_svgp, title=ticker, mean=mean_daily, std=std_daily, filename=f'./plots/{ticker}_SVGP_predict.png', best_model=daily_model_svgp)
             # print(f'Optimal weights for {ticker} (SVGP): alpha = {alpha_opt_svgp}, beta = {beta_opt_svgp}')
 
 # Parameters
@@ -283,7 +325,7 @@ ticker9 = 'BAC'
 ticker10 = 'ARM'
 ticker11 = 'S&P500'
 
-tickers = [ticker1, ticker2, ticker3, ticker4, ticker5, ticker6, ticker7, ticker8]
+tickers = [ticker3, ticker4]
 train_start_date = '2021-04-14'
 train_end_date = '2023-12-29'
 test_start_date = '2024-01-02'

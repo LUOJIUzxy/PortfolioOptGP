@@ -28,7 +28,7 @@ rc('legend', fontsize=MEDIUM_SIZE)
 rc('figure', titlesize=MEDIUM_SIZE)
 
 class StockPredictor:
-    def __init__(self, tickers, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, inducing_points_svgp=20):
+    def __init__(self, tickers, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, inducing_points_svgp=20, lambda_=0.01):
         self.tickers = tickers
         self.train_start_date = train_start_date
         self.train_end_date = train_end_date
@@ -39,6 +39,7 @@ class StockPredictor:
         self.initial_weights = [0.33, 0.33]
         self.bounds = [(0, 1), (0, 1)]
         self.constraints = {'type': 'ineq', 'fun': lambda x: 1 - sum(x)}
+        self.lambda_ = lambda_
 
     def fetch_and_save_data(self, ticker, period):
         load_dotenv()
@@ -181,8 +182,13 @@ class StockPredictor:
         # y_combined_variance = alpha * y_var_daily + beta * y_var_weekly + (1 - alpha - beta) * y_var_monthly
         
         mse = mean_squared_error(Y, f_combined_mean)
-
-        return mse
+         # L1 regularization term
+        l1_regularization = self.lambda_ * (np.abs(alpha) + np.abs(beta))
+        
+        # Total loss
+        total_loss = mse + l1_regularization
+        
+        return total_loss
     
     def optimize_weights(self, X_tf, Y_tf, f_mean_daily, f_mean_weekly, f_mean_monthly):
         result = minimize(lambda weights: self.loss_fn(weights, Y_tf, f_mean_daily, f_mean_weekly, f_mean_monthly), self.initial_weights, bounds=self.bounds, constraints=self.constraints, method='SLSQP')
@@ -427,5 +433,6 @@ kernel_combinations = [
 
 timeframes = ['d', 'w', 'm']
 inducing_points_svgp = 20
-predictor = StockPredictor(tickers, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, inducing_points_svgp)
+lambda_ = 0.01
+predictor = StockPredictor(tickers, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, inducing_points_svgp, lambda_)
 predictor.run(timeframes)

@@ -38,14 +38,14 @@ class DataHandler:
         df['intraday_return'] = (df['close'] - df['open']) / df['open']
         
         return self.normalize_and_reshape(df, column=predict_Y)
-
-    def process_2D_X(self, ticker, period, predict_Y='close'):
+    
+    def process_2D_X(self, ticker, start_date, end_date, predict_Y='close'):
         
         file_path = f'../Commodities/{ticker}/{ticker}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
 
-        df = df[(df['date'] >= self.train_start_date) & (df['date'] <= self.test_end_date)]
+        df = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
     
         df['day_of_year'] = df['date'].apply(self.convert_to_day_of_year)
         

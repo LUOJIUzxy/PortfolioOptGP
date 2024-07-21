@@ -40,14 +40,14 @@ def calculate_correlations(X, Y):
 def plot_2d_kernel_prediction(ax: Axes, kernel: gpflow.kernels.Kernel) -> None:
   
     data = {}
-    data_handler = DataHandler('2024-02-01', '2024-04-26', '2024-04-29', '2024-06-07')
+    data_handler = DataHandler('2024-02-01', '2024-04-26', '2024-04-29', '2024-05-10')
     X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std = data_handler.process_data("AAPL", "d", "close")
     data["d"] = (X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std)
 
-    X, X_Oil_tf, Y_Oil_tf, Oil_dates, oil_mean, oil_std = data_handler.process_2D_X("Brent_Oil", "d", "close")
+    X, X_Oil_tf, Y_Oil_tf, Oil_dates, oil_mean, oil_std = data_handler.process_2D_X("XAU_USD", "2024-02-01", "2024-05-10", "close")
 
     visualizer = Visualizer()
-    visualizer.plot_data(X_Oil_tf, Y_Oil_tf, Oil_dates, title=f'Brent_Oil - Day', mean=oil_mean, std=oil_std, filename=f'../plots/Brent_Oil_Day.png')
+    visualizer.plot_data(X_Oil_tf, Y_Oil_tf, Oil_dates, title=f'XAU_USD - Day', mean=oil_mean, std=oil_std, filename=f'../plots/XAU_USD_Day.png')
 
     Y = Y_AAPL_tf
     model = gpflow.models.GPR(
@@ -65,11 +65,16 @@ def plot_2d_kernel_prediction(ax: Axes, kernel: gpflow.kernels.Kernel) -> None:
 
     print_summary(model)
 
-    n_grid = 4
+
+    X_2, X_tf_2, Y_tf_2, dates_2, mean_2, std_2 = data_handler.process_2D_X("XAU_USD",  "2024-05-13", "2024-06-10", "close")
 
 
-    Xplot_1 = np.linspace(0, 80, n_grid)
-    Xplot_2 = np.linspace(-2, 2, n_grid)
+    n_grid = 20
+
+    #Generate future dates, 20
+    Xplot_1 = np.linspace(100, 125, n_grid)
+    #Xplot_2 = np.linspace(-1.5, 1.5, n_grid)
+    Xplot_2 = Y_tf_2.numpy().reshape(-1)
     Xplot1, Xplot2 = np.meshgrid(Xplot_1, Xplot_2)
 
     print(Xplot1.shape)
@@ -78,15 +83,33 @@ def plot_2d_kernel_prediction(ax: Axes, kernel: gpflow.kernels.Kernel) -> None:
     Xplot = np.stack([Xplot1, Xplot2], axis=-1)
     Xplot = Xplot.reshape([n_grid * n_grid, 2])
 
-    print(Xplot.shape)
 
-    f_mean, _ = model.predict_f(Xplot, full_cov=False)
-    f_mean = f_mean.numpy().reshape((n_grid, n_grid))
-    print(f_mean.shape)
+    X_all = np.vstack((X, Xplot))
 
-    ax.plot_surface(Xplot1, Xplot2, f_mean, cmap=coolwarm, alpha=0.7)
-    ax.scatter(X[:, 0], X[:, 1], Y[:, 0], s=50, c="black")
-    ax.set_title("Example data fit")
+    f_mean_all, _ = model.predict_f(X_all, full_cov=False)
+
+    f_mean_original = f_mean_all[:len(X)]
+    f_mean_new = f_mean_all[len(X):].numpy().reshape((n_grid, n_grid))
+
+    print(f_mean_all.shape)
+
+    mse = np.mean((Y.numpy() - f_mean_original.numpy()) ** 2)
+
+    ax.plot_surface(Xplot1, Xplot2, f_mean_new, cmap="coolwarm", alpha=0.7)
+    scatter = ax.scatter(X[:, 0], X[:, 1], Y[:, 0], c=f_mean_original.numpy(), 
+                         cmap='coolwarm', s=50, edgecolors='black')
+    
+    plt.colorbar(scatter, ax=ax, label='Predicted Value')
+
+    ax.set_title(f"Day, Gold Spot Price vs. Apple Stock Price\n"
+                 f"Corr(X1,Y)={corr_X1Y:.4f}, Corr(X2,Y)={corr_X2Y:.4f}\n"
+                 f"MSE={mse:.4f}")
+    
+    ax.set_xlabel('Day of Year')
+    ax.set_ylabel('Gold Spot Price')
+    ax.set_zlabel('Predicted APPL Price')
+
+    print(f"Mean Squared Error: {mse:.4f}")
 
 
 def plot_2d_kernel(kernel: gpflow.kernels.Kernel, save_path: str = None) -> None:
@@ -106,4 +129,4 @@ def plot_2d_kernel(kernel: gpflow.kernels.Kernel, save_path: str = None) -> None
 
 parameters = [0.1, 0.5]
 kernel = gpflow.kernels.SquaredExponential()
-plot_2d_kernel(kernel, save_path='../plots/2d_kernel_plot.png')
+plot_2d_kernel(kernel, save_path='../plots/2d_kernel_plot1.png')

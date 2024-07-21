@@ -25,7 +25,7 @@ class StockPredictor:
             for timeframe in timeframes:
                 X_tf, Y_tf, dates, mean, std = self.data_handler.process_data(ticker, timeframe, self.predict_Y)
                 data[timeframe] = (X_tf, Y_tf, dates, mean, std)
-                self.visualizer.plot_data(X_tf, Y_tf, dates, title=f'{ticker} - {timeframe}', mean=mean, std=std, filename=f'../../plots/{ticker}_{timeframe}.png')
+                self.visualizer.plot_data(X_tf, Y_tf, dates, title=f'{ticker} - {timeframe}', mean=mean, std=std, filename=f'../plots/{ticker}_{timeframe}.png')
             
             X_daily_tf, Y_daily_tf, _, mean_daily, std_daily = data['d']
             X_weekly_tf, Y_weekly_tf, _, mean_weekly, std_weekly = data['w']
@@ -82,7 +82,7 @@ class StockPredictor:
                 f_mean_combined, f_lower_combined, f_upper_combined, 
                 y_mean_combined, y_lower_combined, y_upper_combined, 
                 title=ticker, mean=mean_daily, std=std_daily, 
-                filename=f'../../plots/{ticker}_GPR_predict_combined.png'
+                filename=f'../plots/{ticker}_GPR_predict_combined.png'
             )
 
 if __name__ == "__main__":

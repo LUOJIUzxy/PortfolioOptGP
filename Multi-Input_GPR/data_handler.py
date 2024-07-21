@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import requests
 from dotenv import load_dotenv
 import os
@@ -11,7 +12,7 @@ class DataHandler:
         self.train_end_date = train_end_date
         self.test_start_date = test_start_date
         self.test_end_date = test_end_date
-
+    
     def fetch_and_save_data(self, ticker, period):
         load_dotenv()
         api_token = os.getenv('API_TOKEN')
@@ -19,18 +20,17 @@ class DataHandler:
         response = requests.get(url)
         data = response.json()
         df = pd.DataFrame(data)
-        csv_file_path = f'../../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
+        csv_file_path = f'../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
         os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
         df.to_csv(csv_file_path, index=False)
     
     def process_data(self, ticker, period, predict_Y='return'):
         self.fetch_and_save_data(ticker, period)
-        file_path = f'../../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
+        file_path = f'../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
         df['day_of_year'] = df['date'].apply(self.convert_to_day_of_year)
         
-        self.calculate_entropy(df['close'])
         
         df['return'] = df['close'].pct_change()
         first_return = df['return'].iloc[1]
@@ -39,20 +39,41 @@ class DataHandler:
         
         return self.normalize_and_reshape(df, column=predict_Y)
 
+    def process_2D_X(self, ticker, period, predict_Y='close'):
+        
+        file_path = f'../Commodities/{ticker}/{ticker}.csv'
+        df = pd.read_csv(file_path)
+        df['date'] = pd.to_datetime(df['date'])
+
+        df = df[(df['date'] >= self.train_start_date) & (df['date'] <= self.test_end_date)]
+    
+        df['day_of_year'] = df['date'].apply(self.convert_to_day_of_year)
+        
+        df['return'] = df['close'].pct_change()
+        first_return = df['return'].iloc[1]
+        df.fillna({'return': first_return}, inplace=True)
+        df['intraday_return'] = (df['close'] - df['open']) / df['open']
+
+        X_tf, Y_tf, df['date'], mean, std = self.normalize_and_reshape(df, column=predict_Y)
+
+        # Convert TensorFlow tensors to numpy arrays
+        X_np = X_tf.numpy()
+        Y_np = Y_tf.numpy()
+        
+        # Ensure Y is 2D
+        if Y_np.ndim == 1:
+            Y_np = Y_np.reshape(-1, 1)
+        
+        # Combine the arrays
+        X = np.column_stack((X_np, Y_np))
+            
+        return X, X_tf, Y_tf, df['date'], mean, std
+
     def convert_to_day_of_year(self, date):
         start_date = pd.Timestamp(self.train_start_date)
         return (date - start_date).days
 
-    def calculate_entropy(self, series):
-        print(f"Entropy results:")
-        print(f"DE: {DE(series, order=3, classes=3, normalize=True)}")
-        print(f"RDE: {RDE(series, order=3, classes=3, delay=1, normalize=True)}")
-        print(f"RPE: {RPE(series, order=3, delay=1, normalize=True)}")
-        print(f"PE: {PE(series, order=3, normalize=True)}")
-        print(f"WPE: {WPE(series, order=3, normalize=True)}")
-        print(f"RWDE: {RWDE(series, order=3, classes=3, delay=1, normalize=True)}")
-
-    def normalize_and_reshape(self, df, column='return'):
+    def normalize_and_reshape(self, df, column='close'):
         mean = df[column].mean()
         std = df[column].std()
         df[column] = (df[column] - mean) / std
@@ -65,7 +86,7 @@ class DataHandler:
         return X_tf, Y_tf, df['date'], mean, std
     
     def generate_future_dates(self, ticker, period='d', total_days=90):
-        file_path = f'../../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
+        file_path = f'../Commodities/{ticker}/{ticker}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
         last_date = df['date'].max()

@@ -6,6 +6,7 @@ class Optimizer:
     def __init__(self, lambda_=0.01):
         self.lambda_ = lambda_
         self.initial_weights = [0.33, 0.33]
+        # Bounds for alpha and beta
         self.bounds = [(0, 1), (0, 1)]
         self.constraints = {'type': 'ineq', 'fun': lambda x: 1 - sum(x)}
 

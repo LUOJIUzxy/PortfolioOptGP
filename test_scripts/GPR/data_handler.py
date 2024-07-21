@@ -19,13 +19,13 @@ class DataHandler:
         response = requests.get(url)
         data = response.json()
         df = pd.DataFrame(data)
-        csv_file_path = f'../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
+        csv_file_path = f'../../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
         os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
         df.to_csv(csv_file_path, index=False)
     
     def process_data(self, ticker, period, predict_Y='return'):
         self.fetch_and_save_data(ticker, period)
-        file_path = f'../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
+        file_path = f'../../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
         df['day_of_year'] = df['date'].apply(self.convert_to_day_of_year)
@@ -65,7 +65,7 @@ class DataHandler:
         return X_tf, Y_tf, df['date'], mean, std
     
     def generate_future_dates(self, ticker, period='d', total_days=90):
-        file_path = f'../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
+        file_path = f'../../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
         last_date = df['date'].max()

@@ -41,7 +41,7 @@ class DataHandler:
     
     def process_2D_X(self, ticker, start_date, end_date, predict_Y='close'):
         
-        file_path = f'../Commodities/{ticker}/{ticker}.csv'
+        file_path = f'../Stocks/{ticker}_EOD/{ticker}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
 

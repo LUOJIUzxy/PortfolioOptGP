@@ -20,15 +20,21 @@ class DataHandler:
         response = requests.get(url)
         data = response.json()
         df = pd.DataFrame(data)
-        csv_file_path = f'../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
+        csv_file_path = f'../Stocks/{ticker}/{ticker}_us_{period}.csv'
         os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
         df.to_csv(csv_file_path, index=False)
     
-    def process_data(self, ticker, period, predict_Y='return'):
-        self.fetch_and_save_data(ticker, period)
-        file_path = f'../Stocks/{ticker}_EOD/{ticker}_us_{period}.csv'
+    # Process single file data, return normalized X and Y, X as day_of_year, Y as return
+    def process_data(self, file_type, ticker, period, predict_Y='close', normalize=True, isFetch=False):
+        if isFetch:
+            self.fetch_and_save_data(ticker, period)
+            print(f'{ticker} data fetched and saved')
+        
+        file_path = f'../{file_type}/{ticker}/{ticker}_us_{period}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
+
+        df = df[(df['date'] >= self.train_start_date) & (df['date'] <= self.test_end_date)]
         df['day_of_year'] = df['date'].apply(self.convert_to_day_of_year)
         
         
@@ -41,7 +47,7 @@ class DataHandler:
     
     def process_2D_X(self, ticker, start_date, end_date, predict_Y='close'):
         
-        file_path = f'../Stocks/{ticker}_EOD/{ticker}.csv'
+        file_path = f'../Stocks/{ticker}/{ticker}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
 
@@ -56,18 +62,49 @@ class DataHandler:
 
         X_tf, Y_tf, df['date'], mean, std = self.normalize_and_reshape(df, column=predict_Y)
 
-        # Convert TensorFlow tensors to numpy arrays
-        X_np = X_tf.numpy()
-        Y_np = Y_tf.numpy()
+        # # Convert TensorFlow tensors to numpy arrays
+        # X_np = X_tf.numpy()
+        # Y_np = Y_tf.numpy()
         
-        # Ensure Y is 2D
-        if Y_np.ndim == 1:
-            Y_np = Y_np.reshape(-1, 1)
+        # # Ensure Y is 2D
+        # if Y_np.ndim == 1:
+        #     Y_np = Y_np.reshape(-1, 1)
         
-        # Combine the arrays
-        X = np.column_stack((X_np, Y_np))
+        # X = np.column_stack((X_np, Y_np))
+        # print(X_np.shape)  # (n, 1)
+        # print(Y_np.shape)   # (n, 1)
+        # print(X.shape)  # (n, 2)
             
-        return X, X_tf, Y_tf, df['date'], mean, std
+        return X_tf, Y_tf, df['date'], mean, std
+    
+    # Combine the arrays to vectorize the input
+    # X is a list of tensors, e.g. [X_tf, X_tf_2, Y_tf_2]
+    def concatenate_X(self, X):
+        if not isinstance(X, (list, tuple)):
+            raise ValueError("Input X should be a list or tuple of tensors")
+
+        # Ensure there's at least one array
+        if len(X) < 1:
+            raise ValueError("Input X should contain at least one tensor array")
+
+        # Convert all inputs to numpy arrays if they aren't already
+        if not all(x.shape == X[0].shape for x in X):
+            raise ValueError("All input tensors should have the same shape")
+
+        X_arrays = [x.numpy().reshape(-1, 1) for x in X]
+
+        # Concatenate along the second axis (column-wise)
+        X_combined = np.concatenate(X_arrays, axis=1)
+
+        # for i in range(len(X)):
+        #     if i == 0:
+        #         # Convert TensorFlow tensors to numpy arrays
+        #         X_combined = X[i].numpy().reshape(-1)
+        #     else:
+        #         X_combined = np.concatenate([X_combined, X[i].numpy().reshape(-1)])
+
+        print(X_combined.shape)
+        return X_combined
 
     def convert_to_day_of_year(self, date):
         start_date = pd.Timestamp(self.train_start_date)

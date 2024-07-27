@@ -21,13 +21,32 @@ class Visualizer:
 
     def plot_data(self, X_tf, Y_tf, dates, title, mean, std, filename):
         dates_formatted = dates.dt.strftime(f'%y-%m-%d')
-        #Y_tf = Y_tf * std + mean
+        Y_tf = Y_tf * std + mean
         plt.figure(figsize=(12, 6))
         plt.plot(dates_formatted, Y_tf, label=title)
         plt.xlabel('Date')
         plt.ylabel('Open Price')
         plt.xticks(rotation=45)
         plt.title(f'{title}, Daily Return Over Time')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(filename)
+        plt.close()
+    
+    def plot_GP(self, X_tf, Y_tf, f_mean, f_cov, title, filename):
+        f_lower = f_mean - 1.96 * f_cov
+        f_upper = f_mean + 1.96 * f_cov
+
+
+        plt.figure(figsize=(12, 6))
+        plt.plot(X_tf, Y_tf, "kx", mew=2, label="Training data")
+        plt.plot(X_tf, f_mean, color="C0", label="Mean")
+        plt.plot(X_tf, f_lower, "--", color="C1", label="95% confidence")
+        plt.plot(X_tf, f_upper, "--", color="C1")
+        plt.fill_between(X_tf[:, 0], f_lower[:, 0], f_upper[:, 0], color="C0", alpha=0.2)
+        plt.xlabel('Date')
+        plt.ylabel('APPL Close Price')
+        plt.title(f'GP Regression on {title} Return')
         plt.legend()
         plt.grid(True)
         plt.savefig(filename)

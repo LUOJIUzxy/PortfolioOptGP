@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import gpflow
 from gpflow.utilities import deepcopy, print_summary
+from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.cm import coolwarm
@@ -13,6 +14,7 @@ from data_handler import DataHandler
 import numpy as np
 import tensorflow as tf
 
+# X as input with the shape of (n, 2), Y as output with the shape of (n, 1)
 def calculate_correlations(X, Y):
     # Convert TensorFlow tensors to numpy arrays
     if isinstance(X, tf.Tensor):
@@ -37,79 +39,37 @@ def calculate_correlations(X, Y):
 
     return corr_X1Y, corr_X2Y, full_corr
 
-def plot_2d_kernel_prediction(ax: Axes) -> None:
-  
-    data = {}
-    data_handler = DataHandler('2024-02-01', '2024-04-26', '2024-04-29', '2024-05-10')
-    X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std = data_handler.process_data("AAPL", "d", "close")
-    data["d"] = (X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std)
+# X as input with the shape of (n, 1), Y as output with the shape of (n, 1)
+def calculate_correlation(X, Y):
+    # Convert TensorFlow tensors to numpy arrays
+    if isinstance(X, tf.Tensor):
+        X = X.numpy()
+    if isinstance(Y, tf.Tensor):
+        Y = Y.numpy()
 
-    X, X_tf, Y_tf, dates, mean, std = data_handler.process_2D_X("MSFT", "2024-02-01", "2024-05-10", "close")
+    X = X.reshape(-1)  # Reshape X to 1D array
+    Y = Y.reshape(-1)  # Reshape Y to 1D array
 
-    visualizer = Visualizer()
-    visualizer.plot_data(X_tf, Y_tf, dates, title=f'MSFT - Day', mean=mean, std=std, filename=f'../plots/MSFT_Day.png')
+    # Calculate correlation
+    corr_matrix = np.corrcoef([X, Y])
 
-    Y = Y_AAPL_tf
-   
-    # Calculate correlations
-    corr_X1Y, corr_X2Y, full_corr = calculate_correlations(X, Y)
+    print(f"Correlation between X and Y: {corr_matrix[0, 1]:.4f}")
 
-    # Add correlation information to the plot title
-    ax.set_title(f"Example data fit\nCorr(X1,Y)={corr_X1Y:.4f}, Corr(X2,Y)={corr_X2Y:.4f}")
+    print("\nCorrelation Matrix:")
+    print(corr_matrix)
 
-    model = gpflow.models.GPR(
-        (X, Y), kernel=deepcopy(kernel), noise_variance=1e-3
-    )
-    model = train_model(X, Y, model)
+    return corr_matrix
 
-    X_2, X_tf_2, Y_tf_2, dates_2, mean_2, std_2 = data_handler.process_2D_X("MSFT",  "2024-05-10", "2024-06-07", "close")
+# What is a Kernel?
+# A kernel is a function that defines the covariance between two points in the input space.
+# The kernel defines what kind of shapes can take, and it is one of the primary ways you fit your model to your data.
+# Technically, a kernel is a function that takes values and returns a covariance matrix telling us how those 
+#  coordinates relate to each other. However, for many users it may be more useful to develop an intuitive understanding of how the different kernels behave than to study the maths.
+# A kernel is sometimes also known as a covariance function.
 
-    # Original data
-    X_1 = X_tf.numpy().reshape(-1)
-    X_2 = Y_tf.numpy().reshape(-1)
-
-    print(X_1.shape)
-    print(X_2.shape)
-
-    n_grid = 20
-
-    #Generate future dates, 20
-    Xplot_1 = np.linspace(X_1.max(), X_1.max() + 20, n_grid)  # Assuming day of year continues
-    X1_combined = np.concatenate([X_1, Xplot_1])
-    #Xplot_2 = np.linspace(-1.5, 1.5, n_grid)
-    Xplot_2 = Y_tf_2.numpy().reshape(-1)
-    X2_combined = np.concatenate([X_2, Xplot_2])
-
-    X1_mesh, X2_mesh = np.meshgrid(X1_combined, X2_combined)
-
-   
-    Xplot = np.column_stack([X1_mesh.ravel(), X2_mesh.ravel()])
-
-
-    f_mean_all, _ = model.predict_f(Xplot, full_cov=False)
-    f_mean_reshaped = f_mean_all.numpy().reshape(X1_mesh.shape)
-
-    print(f_mean_all.shape, Xplot.shape)
-
-    plt.plot(Xplot[: 0], f_mean_all, "kx", mew=2, label="Training data")
-    # surface = ax.plot_surface(X1_mesh, X2_mesh, f_mean_reshaped, cmap="coolwarm", alpha=0.2)
-    # scatter = ax.scatter(X[:, 0], X[:, 1], Y[:, 0], c=Y[:, 0], 
-    #                      cmap='gist_gray', s=50, edgecolors='black')
-    
-    # plt.colorbar(surface, ax=ax, label='Predicted Value', pad=0.1)
-    # plt.colorbar(scatter, ax=ax, label='Actual Value', pad=0.15)
-
-    ax.set_title(f"Day, MSFT Price vs. Apple Stock Price\n"
-                 f"Corr(X1,Y)={corr_X1Y:.4f}, Corr(X2,Y)={corr_X2Y:.4f}\n"
-                 )
-    
-    ax.set_xlabel('Day of Year')
-    ax.set_ylabel('AAPL Price')
-    # ax.set_zlabel('Predicted APPL Price')
-    
-
-def train_model(X: np.ndarray, Y: np.ndarray, model: gpflow.models.GPR) -> gpflow.models.GPR:
-    model = gpflow.models.GPR((X, Y), kernel=deepcopy(kernel), noise_variance=1e-3)
+# What is a Model?
+def train_model(model: gpflow.models.GPR) -> gpflow.models.GPR:
+    #model = gpflow.models.GPR((X, Y), kernel=deepcopy(kernel), noise_variance=1e-3)
     gpflow.set_trainable(model.likelihood, False)
     opt = gpflow.optimizers.Scipy()
     opt.minimize(model.training_loss, model.trainable_variables)
@@ -117,22 +77,88 @@ def train_model(X: np.ndarray, Y: np.ndarray, model: gpflow.models.GPR) -> gpflo
 
     return model
 
+def plot_2d_kernel_prediction(ax: Axes) -> None:
+  
+    data = {}
+    data_handler = DataHandler('2024-02-01', '2024-05-10', '2024-05-13', '2024-05-10')
+    #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
+    X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std = data_handler.process_data("Stocks", "AAPL", "d", "close", isFetch=True)
+    data["d"] = (X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std)
 
+    #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
+    X_tf, Y_tf, dates, mean, std = data_handler.process_data("Stocks", "NasDaq100", "d", "close", isFetch=False)
+    visualizer = Visualizer()
+    visualizer.plot_data(X_tf, Y_tf, dates, title='NasDaq100 - Day', mean=mean, std=std, filename='../plots/NasDaq100_Day.png')
 
-def plot_2d_kernel(kernel: gpflow.kernels.Kernel, save_path: str = None) -> None:
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, figsize=(10, 7))
-    plot_2d_kernel_prediction(ax, kernel)
+    # Calculate correlation between X and Y
+    corr = calculate_correlation(Y_tf, Y_AAPL_tf)
     
-    plt.tight_layout()
+    #3. Concatenate multi-dimenstional input data X = [X1, X2, ...], as days * features vector
+    X = data_handler.concatenate_X([X_tf, Y_tf])
 
-    if save_path:
-        # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"Plot saved to {save_path}")
+    Y = Y_AAPL_tf
 
-    else:
-        plt.show()
+    # Add correlation information to the plot title
+    ax.set_title(f"Example data fit\nCorr(X1,Y)={corr_X1Y:.4f}, Corr(X2,Y)={corr_X2Y:.4f}")
+
+    kernel = gpflow.kernels.Exponential()
+    model = gpflow.models.GPR(
+        (X, Y), kernel=deepcopy(kernel), noise_variance=1e-5
+    )
+    model = train_model(model)
+
+    ##Step1 finished
+    # Plot the data
+    f_mean, f_cov = model.predict_f(X, full_cov=False)
+
+    # Calculate mse
+    mse_test = mean_squared_error(Y_tf, f_mean.numpy())
+    print(f"Mean Squared Error: {mse_test:.4f}")
+
+    f_mean = f_mean * AAPL_std + AAPL_mean
+    Y_actual = Y * AAPL_std + AAPL_mean
+    f_cov = f_cov * AAPL_std ** 2
+    visualizer.plot_GP(X_tf, Y_actual, f_mean, f_cov, title="APPL / Day, predicted by NasDaq100", filename=f'../plots/NasDaq100_APPL_GP.png')
+
+   
+
+    # # Original data
+    # X_1 = X_tf.numpy().reshape(-1)
+    # X_2 = Y_tf.numpy().reshape(-1)
+
+    # print(X_1.shape)
+    # print(X_2.shape)
+
+    # n_grid = 20
+
+    # #Generate future dates, 20
+    # Xplot_1 = np.linspace(X_1.max(), X_1.max() + 20, n_grid)  # Assuming day of year continues
+    # X1_combined = np.concatenate([X_1, Xplot_1])
+    # #Xplot_2 = np.linspace(-1.5, 1.5, n_grid)
+    # Xplot_2 = Y_tf_2.numpy().reshape(-1)
+    # X2_combined = np.concatenate([X_2, Xplot_2])
+
+    # X1_mesh, X2_mesh = np.meshgrid(X1_combined, X2_combined)
+
+   
+    # Xplot = np.column_stack([X1_mesh.ravel(), X2_mesh.ravel()])
+
+
+    # f_mean_all, _ = model.predict_f(Xplot, full_cov=False)
+    # f_mean_reshaped = f_mean_all.numpy().reshape(X1_mesh.shape)
+
+    # print(f_mean_all.shape, Xplot.shape)
+
+    # plt.plot(Xplot[: 0], f_mean_all, "kx", mew=2, label="Training data")
+
+
+    # ax.set_title(f"Day, MSFT Price vs. Apple Stock Price\n"
+    #              f"Corr(X1,Y)={corr_X1Y:.4f}, Corr(X2,Y)={corr_X2Y:.4f}\n"
+    #              )
+    
+    # ax.set_xlabel('Day of Year')
+    # ax.set_ylabel('AAPL Price')
+    # # ax.set_zlabel('Predicted APPL Price')
 
 # 1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price) 
 # 2. Fetch input data(e.g. Brent Oil / MSFT stock price)

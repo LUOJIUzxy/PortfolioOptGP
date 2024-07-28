@@ -7,16 +7,22 @@ import tensorflow as tf
 from OrdinalEntroPy.OrdinalEntroPy import PE, WPE, RPE, DE, RDE, RWDE
 
 class DataHandler:
-    def __init__(self, train_start_date, train_end_date):
+    def __init__(self, train_start_date, train_end_date, test_start_date, test_end_date):
         self.train_start_date = train_start_date
         self.train_end_date = train_end_date
-
+        self.test_start_date = test_start_date
+        self.test_end_date = test_end_date
     
-    def fetch_and_save_data(self, ticker, period):
+    def fetch_and_save_data(self, ticker, period, start_date, end_date):
         load_dotenv()
         api_token = os.getenv('API_TOKEN')
-        url = f'https://eodhd.com/api/eod/{ticker}.US?period={period}&api_token={api_token}&fmt=json&from={self.train_start_date}&to={self.train_end_date}'
+        url = f'https://eodhd.com/api/eod/{ticker}.US?period={period}&api_token={api_token}&fmt=json&from={start_date}&to={end_date}'
         response = requests.get(url)
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            print(f"Error: {e}")
+            return
         data = response.json()
         df = pd.DataFrame(data)
         csv_file_path = f'../Stocks/{ticker}/{ticker}_us_{period}.csv'
@@ -24,16 +30,16 @@ class DataHandler:
         df.to_csv(csv_file_path, index=False)
     
     # Process single file data, return normalized X and Y, X as day_of_year, Y as return
-    def process_data(self, file_type, ticker, period, predict_Y='close', normalize=True, isFetch=False):
+    def process_data(self, file_type, ticker, period, start_date, end_date, predict_Y='close', normalize=True, isFetch=False):
         if isFetch:
-            self.fetch_and_save_data(ticker, period)
-            print(f'{ticker} data fetched and saved')
+            self.fetch_and_save_data(ticker, period, start_date, end_date)
+            print(f'{ticker} data from {start_date} to {end_date} fetched and saved')
         
         file_path = f'../{file_type}/{ticker}/{ticker}_us_{period}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
 
-        df = df[(df['date'] >= self.train_start_date) & (df['date'] <= self.train_end_date)]
+        df = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
         df['day_of_year'] = df['date'].apply(self.convert_to_day_of_year)
         
         

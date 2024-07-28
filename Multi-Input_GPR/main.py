@@ -1,12 +1,13 @@
 import numpy as np
 import tensorflow as tf
 import gpflow
-from gpflow.utilities import deepcopy, print_summary
+from gpflow.utilities import deepcopy
 from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.cm import coolwarm
 import os
+import random
 
 from visualizer import Visualizer
 from data_handler import DataHandler
@@ -17,39 +18,20 @@ import tensorflow as tf
 
 class MultiInputGPR:
     
-    def __init__(self, ticker, features, train_start_date, train_end_date, kernel_combinations, predict_Y='close'):
+    def __init__(self, ticker, features, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, threshold, removal_percentage, predict_Y='close'):
         self.ticker = ticker
         self.features = features
         self.kernel_combinations = kernel_combinations
-        self.data_handler = DataHandler(train_start_date, train_end_date)
+        self.train_start_date = train_start_date
+        self.train_end_date = train_end_date
+        self.test_start_date = test_start_date
+        self.test_end_date = test_end_date
+        self.data_handler = DataHandler(train_start_date, train_end_date, test_start_date, test_end_date)
         self.model_trainer = ModelTrainer(kernel_combinations)
         self.visualizer = Visualizer()
         self.predict_Y = predict_Y
-
-# X as input with the shape of (n, 2), Y as output with the shape of (n, 1)
-    def calculate_correlations(self, X, Y):
-        # Convert TensorFlow tensors to numpy arrays
-        if isinstance(X, tf.Tensor):
-            X = X.numpy()
-        if isinstance(Y, tf.Tensor):
-            Y = Y.numpy()
-
-        X1 = X[:, 0]
-        X2 = X[:, 1]
-        Y = Y.reshape(-1)  # Reshape Y to 1D array
-
-        corr_X1Y = np.corrcoef(X1, Y)[0, 1]
-        corr_X2Y = np.corrcoef(X2, Y)[0, 1]
-
-        print(f"Correlation between X1 and Y: {corr_X1Y:.4f}")
-        print(f"Correlation between X2 and Y: {corr_X2Y:.4f}")
-
-        # Full correlation matrix
-        full_corr = np.corrcoef([X1, X2, Y])
-        print("\nFull Correlation Matrix:")
-        print(full_corr)
-
-        return corr_X1Y, corr_X2Y, full_corr
+        self.threshold = threshold
+        self.removal_percentage = removal_percentage
 
     # X as input with the shape of (n, 1), Y as output with the shape of (n, 1)
     def calculate_correlation(self, X, Y):
@@ -65,13 +47,12 @@ class MultiInputGPR:
         # Calculate correlation
         corr_matrix = np.corrcoef([X, Y])
 
-        # print(f"Correlation between X and Y: {corr_matrix[0, 1]:.4f}")
-
         print("\nCorrelation Matrix:")
         print(corr_matrix)
 
         return corr_matrix[0, 1]
 
+    # X as input with the shape of (n, m), Y as output with the shape of (n, 1)
     def full_correlations(self, X, Y):
         # Convert TensorFlow tensors to numpy arrays
         if isinstance(X, tf.Tensor):
@@ -98,21 +79,39 @@ class MultiInputGPR:
 
         return full_corr  
 
-
-    def plot_2d_kernel_prediction(self, ax: Axes) -> None:
+    def remove_random_points(self, X, Y, removal_percentage):
+        total_points = X.shape[0]
+        points_to_remove = int(total_points * removal_percentage)
+        
+        # Create a mask of True values
+        mask = np.ones(total_points, dtype=bool)
+        
+        # Randomly set some values to False
+        remove_indices = random.sample(range(total_points), points_to_remove)
+        mask[remove_indices] = False
+        
+        # Apply the mask to X and Y
+        X_reduced = X[mask]
+        Y_reduced = Y[mask]
+        
+        # Keep track of removed points for later comparison
+        X_removed = X[~mask]
+        Y_removed = Y[~mask]
+        
+        return X_reduced, Y_reduced, X_removed, Y_removed
     
-        data = {}
+    def run_step_1(self) -> None:
+    
         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
-        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std = self.data_handler.process_data("Stocks", self.ticker, "d", self.predict_Y, isFetch=True)
-        data["d"] = (X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std)
+        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False)
 
         #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
         _X = []
         for feature in self.features:
             if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
-                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Commodities", feature, "d", "close", isFetch=False)
+                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
             else:
-                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Stocks", feature, "d", "close", isFetch=False)
+                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
             visualizer = Visualizer()
             visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=mean, std=std, filename=f'../plots/multi-input/{feature}_Day.png')
 
@@ -120,7 +119,7 @@ class MultiInputGPR:
             corr = self.calculate_correlation(Y_tf * std + mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
             print(f"Correlation between {feature} and {self.ticker}: {corr:.4f}")
 
-            if np.abs(corr) > 0.15:
+            if np.abs(corr) > self.threshold:
                 _X.append(Y_tf)
                 print(f"Selected {feature} for training")
             else:
@@ -149,83 +148,163 @@ class MultiInputGPR:
         f_mean, f_cov = model.predict_f(X, full_cov=False)
 
         # Calculate mse
-        mse_test = mean_squared_error(Y_tf, f_mean.numpy())
+        mse_test = mean_squared_error(Y, f_mean.numpy())
         print(f"Mean Squared Error: {mse_test:.4f}")
 
         f_mean = f_mean * AAPL_std + AAPL_mean
         Y_actual = Y * AAPL_std + AAPL_mean
         f_cov = f_cov * AAPL_std ** 2
+
         visualizer.plot_GP(X_AAPL_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/predicted_{self.ticker}.png')
-
    
-
-    # # Original data
-    # X_1 = X_tf.numpy().reshape(-1)
-    # X_2 = Y_tf.numpy().reshape(-1)
-
-    # print(X_1.shape)
-    # print(X_2.shape)
-
-    # n_grid = 20
-
-    # #Generate future dates, 20
-    # Xplot_1 = np.linspace(X_1.max(), X_1.max() + 20, n_grid)  # Assuming day of year continues
-    # X1_combined = np.concatenate([X_1, Xplot_1])
-    # #Xplot_2 = np.linspace(-1.5, 1.5, n_grid)
-    # Xplot_2 = Y_tf_2.numpy().reshape(-1)
-    # X2_combined = np.concatenate([X_2, Xplot_2])
-
-    # X1_mesh, X2_mesh = np.meshgrid(X1_combined, X2_combined)
-
-   
-    # Xplot = np.column_stack([X1_mesh.ravel(), X2_mesh.ravel()])
-
-
-    # f_mean_all, _ = model.predict_f(Xplot, full_cov=False)
-    # f_mean_reshaped = f_mean_all.numpy().reshape(X1_mesh.shape)
-
-    # print(f_mean_all.shape, Xplot.shape)
-
-    # plt.plot(Xplot[: 0], f_mean_all, "kx", mew=2, label="Training data")
-
-
-    # ax.set_title(f"Day, MSFT Price vs. Apple Stock Price\n"
-    #              f"Corr(X1,Y)={corr_X1Y:.4f}, Corr(X2,Y)={corr_X2Y:.4f}\n"
-    #              )
+    def run_step_2(self) -> None:
     
-    # ax.set_xlabel('Day of Year')
-    # ax.set_ylabel('AAPL Price')
-    # # ax.set_zlabel('Predicted APPL Price')
+        #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
+        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False)
 
-# 1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price) 
-# 2. Fetch input data(e.g. Brent Oil / MSFT stock price)
-# 3. Concatenate multi-dimenstional input data X = [X1, X2, ...], as days * features vector
-        #e.g. [X0 = 70 days index, X1 = 70 days * 1 feature, X2 = 70 days * 1 feature....]
-        # Here only 2D, one feature at a time
-# 4. Train the model with the input data and the actual values of to-be-predicted stock data
-# 5. Predict the mean and variance of the to-be-predicted stock data using the trained model
-# 6. Plot the predicted mean and variance of the to-be-predicted stock data as Y-axis, and the days_of_year as X-axis
-# Calculate MSE between the actual values and the predicted denormalized mean values
-# 7. Calculate the correlation between the input data and the actual values of to-be-predicted stock data: 2 x 2 matrix
-# 8. Plot the coloful correlation matrix with all the correlation values
-# 9. Select all the highly-correlated features and re-train the model with multiple selected features
-# 10. Repeat the steps 5 to 8 with the re-trained model
-# 11. Missing Values
-# 12. Predict future values of the to-be-predicted stock data using the re-trained
-        
-# Functions:
-# 1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
-# 2. Fetch input data(e.g. Brent Oil / MSFT stock price)
-# 3. Concatenate multi-dimenstional input data X = [X1, X2, ...], as days * features vector
-        #Args: 1. features list: list[], 2. start_date: str, 3. end_date: str, 4. feature_names list: list[]
+        #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
+        _X = []
+        for feature in self.features:
+            if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
+                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+            else:
+                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+            visualizer = Visualizer()
+            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=mean, std=std, filename=f'../plots/multi-input/{feature}_Day.png')
 
-# 4. Train the model with the input data and the actual values of to-be-predicted stock data
-# 5. Normalize
-# 6. Denormalize
+            # Calculate correlation between X and Y
+            corr = self.calculate_correlation(Y_tf * std + mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
+            print(f"Correlation between {feature} and {self.ticker}: {corr:.4f}")
+
+            if np.abs(corr) > self.threshold:
+                _X.append(Y_tf)
+                print(f"Selected {feature} for training")
+            else:
+                print(f"Discarded {feature} for training")
         
+
+        #3. Concatenate multi-dimenstional input data X = [X1, X2, ...], as days * features vector
+        # X_AAPL_tf should be equal to X_tf
+        
+        _X.append(X_AAPL_tf)
+        X = self.data_handler.concatenate_X(_X)
+
+        Y = Y_AAPL_tf
+
+        # Remove random points
+        X_reduced, Y_reduced, X_removed, Y_removed = self.remove_random_points(X, Y, self.removal_percentage)
+
+        # 4. Train the model with the reduced data
+        for kernel in self.kernel_combinations:
+            model = gpflow.models.GPR(
+                (X_reduced, Y_reduced), kernel=deepcopy(kernel), noise_variance=1e-5
+            )
+            model = ModelTrainer.train_model(model)
+
+        # Predict on all points, including removed ones
+        f_mean, f_cov = model.predict_f(X, full_cov=False)
+
+        # Denormalize predictions and actual values
+        f_mean = f_mean * AAPL_std + AAPL_mean
+        Y_actual = Y * AAPL_std + AAPL_mean
+        Y_removed_actual = Y_removed * AAPL_std + AAPL_mean
+        f_cov = f_cov * AAPL_std ** 2
+
+        # Calculate MSE for all points and removed points
+        mse_all = mean_squared_error(Y_actual, f_mean.numpy())
+        mse_removed = mean_squared_error(Y_removed_actual, f_mean.numpy()[~np.isin(X, X_reduced).all(axis=1)])
+
+        print(f"Mean Squared Error (all points): {mse_all:.4f}")
+        print(f"Mean Squared Error (removed points): {mse_removed:.4f}")
+       
+
+        # Plot results
+        self.visualizer.plot_GP_with_removed(
+            X_AAPL_tf, Y_actual, f_mean, f_cov, 
+            X_removed[:, -1], Y_removed_actual,  # Assuming the last column of X is the date
+            title=f"{self.ticker} / Day, with {self.removal_percentage * 100} percentage points removed",
+            filename=f'../plots/multi-input/predicted_{self.ticker}_with_removed.png'
+        )
+
+    # Predict the future values of the to-be-predicted stock data
+    # Fetch Train + Test data 
+    def run_step_3(self) -> None:
+        #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
+        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True)
+        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, AAPL_full_mean, AAPL_full_std = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=True)
+
+        #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
+        # X columns vector for training
+        _X = []
+        # X columns vector for testing
+        X_full = []
+        for feature in self.features:
+            if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
+                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+                X_full_tf, Y_full_tf, full_dates, full_mean, full_std = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False)
+            elif feature == "SP500" or feature == "NasDaq100":
+                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+                X_full_tf, Y_full_tf, full_dates, full_mean, full_std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False)
+            else:
+                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+                X_full_tf, Y_full_tf, full_dates, full_mean, full_std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=True)
+            visualizer = Visualizer()
+            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=mean, std=std, filename=f'../plots/multi-input/{feature}_Day.png')
+
+            # Calculate correlation between X and Y
+            corr = self.calculate_correlation(Y_tf * std + mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
+            print(f"Correlation between {feature} and {self.ticker}: {corr:.4f}")
+
+            if np.abs(corr) > self.threshold:
+                _X.append(Y_tf)
+                X_full.append(Y_full_tf)
+                print(f"Selected {feature} for training")
+            else:
+                print(f"Discarded {feature} for training")
+
+        #3. Concatenate multi-dimenstional input data X = [X1, X2, ...], as days * features vector
+        # X_AAPL_tf should be equal to X_tf
+        
+        _X.append(X_AAPL_tf)
+        X = self.data_handler.concatenate_X(_X)
+
+        Y = Y_AAPL_tf
+        self.full_correlations(X, Y)
+
+        #4. Train the model with the input data and the actual values of to-be-predicted stock data
+        for kernel in self.kernel_combinations:
+            model = gpflow.models.GPR(
+                (X, Y), kernel=deepcopy(kernel), noise_variance=1e-3
+            )
+            model = ModelTrainer.train_model(model)
+
+        # add test data to predict as well
+        X_full.append(X_AAPL_full_tf)
+        X_full = self.data_handler.concatenate_X(X_full)
+        # predict the mean and variance of the to-be-predicted stock data using the trained model, with input X vector of days * features
+        f_mean, f_cov = model.predict_f(X_full, full_cov=False)
+
+        # Calculate mse for all train and test data
+        # Actually should only calculate the test period data
+        mse_test = mean_squared_error(Y_AAPL_full_tf, f_mean.numpy())
+        print(f"Mean Squared Error Normalized: {mse_test:.4f}")
+
+        f_mean = f_mean * AAPL_full_std + AAPL_full_mean
+        Y_actual = Y_AAPL_full_tf * AAPL_full_std + AAPL_full_mean
+        f_cov = f_cov * AAPL_full_std ** 2
+
+        # Calculate denormalised mse for all train and test data
+        # Actually should only calculate the test period data
+        mse_test = mean_squared_error(Y_actual, f_mean.numpy())
+        print(f"Mean Squared Error DeNormalized: {mse_test:.4f}")
+
+        visualizer.plot_GP(X_AAPL_full_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/future_predictions_{self.ticker}.png')
+
 if __name__ == "__main__":
     train_start_date = '2024-02-10'
     train_end_date = '2024-05-10'
+    test_start_date = '2024-05-13'
+    test_end_date = '2024-05-15'
 
     to_be_predicted = 'AAPL'
     assets = ['MSFT', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100', 'XAU_USD']
@@ -243,10 +322,14 @@ if __name__ == "__main__":
         features=assets,
         train_start_date=train_start_date, 
         train_end_date=train_end_date, 
+        test_start_date=test_start_date,
+        test_end_date=test_end_date,
         kernel_combinations=kernel_combinations, 
-        predict_Y=predict_Y
+        threshold=0.30,
+        predict_Y=predict_Y,
+        removal_percentage=0.1
     )
 
-    multiInputGPR.plot_2d_kernel_prediction(plt.gca() )
+    multiInputGPR.run_step_3()
     plt.show()
 

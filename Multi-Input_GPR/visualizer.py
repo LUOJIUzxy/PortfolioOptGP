@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib import rc
+import numpy as np
 
 class Visualizer:
     def __init__(self):
@@ -40,7 +41,7 @@ class Visualizer:
 
         plt.figure(figsize=(12, 6))
         plt.plot(X_tf, Y_tf, "kx", mew=2, label="Training data")
-        plt.plot(X_tf, f_mean, color="C0", label="Mean")
+        plt.plot(X_tf, f_mean, color="C0", label="Predicted Mean")
         plt.plot(X_tf, f_lower, "--", color="C1", label="95% confidence")
         plt.plot(X_tf, f_upper, "--", color="C1")
         plt.fill_between(X_tf[:, 0], f_lower[:, 0], f_upper[:, 0], color="C0", alpha=0.2)
@@ -49,6 +50,29 @@ class Visualizer:
         plt.title(f'GP Regression on {title} Return')
         plt.legend()
         plt.grid(True)
+        plt.savefig(filename)
+        plt.close()
+    
+    def plot_GP_with_removed(self, X, Y_actual, f_mean, f_cov, X_removed, Y_removed, title, filename):
+        plt.figure(figsize=(12, 6))
+        X = X.numpy() if hasattr(X, 'numpy') else X
+        Y_actual = Y_actual.numpy() if hasattr(Y_actual, 'numpy') else Y_actual
+        f_mean = f_mean.numpy() if hasattr(f_mean, 'numpy') else f_mean
+        f_cov = f_cov.numpy() if hasattr(f_cov, 'numpy') else f_cov
+        X_removed = X_removed.numpy() if hasattr(X_removed, 'numpy') else X_removed
+        Y_removed = Y_removed.numpy() if hasattr(Y_removed, 'numpy') else Y_removed
+
+        plt.plot(X, Y_actual, 'kx', label='Actual data')
+        plt.plot(X, f_mean, '.', color='blue', label='Predicted mean')
+        plt.fill_between(
+            X.ravel(),
+            f_mean.ravel() - 1.96 * np.sqrt(f_cov.ravel()),
+            f_mean.ravel() + 1.96 * np.sqrt(f_cov.ravel()),
+            color='C1', alpha=0.2, label=f'95% confidence interval'
+        )
+        plt.scatter(X_removed, Y_removed, color='red', s=50, label='Removed points')
+        plt.title(title)
+        plt.legend()
         plt.savefig(filename)
         plt.close()
 

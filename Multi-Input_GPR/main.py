@@ -18,7 +18,7 @@ import tensorflow as tf
 
 class MultiInputGPR:
     
-    def __init__(self, ticker, features, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, threshold, removal_percentage, predict_Y='close'):
+    def __init__(self, ticker, features, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, threshold, removal_percentage, predict_Y='close', isFixedLikelihood=False):
         self.ticker = ticker
         self.features = features
         self.kernel_combinations = kernel_combinations
@@ -32,6 +32,7 @@ class MultiInputGPR:
         self.predict_Y = predict_Y
         self.threshold = threshold
         self.removal_percentage = removal_percentage
+        self.isFixed = isFixedLikelihood
 
     # X as input with the shape of (n, 1), Y as output with the shape of (n, 1)
     def calculate_correlation(self, X, Y):
@@ -293,12 +294,14 @@ class MultiInputGPR:
         ]
         
         for composite_kernel in self.kernel_combinations:
-            # model = gpflow.models.GPR(
-            #     (X, Y), kernel=deepcopy(composite_kernel), noise_variance=1e-1
-            # )
-            
-            # model = ModelTrainer.train_model(model)
-            model = ModelTrainer.train_likelihood(X, Y, composite_kernel)
+            if self.isFixed:
+                model = gpflow.models.GPR(
+                    (X, Y), kernel=deepcopy(composite_kernel), noise_variance=1e-1
+                )
+                
+                model = ModelTrainer.train_model(model)
+            else:
+                model = ModelTrainer.train_likelihood(X, Y, composite_kernel)
 
         # add test data to predict as well
         X_full.append(X_AAPL_full_tf)
@@ -351,7 +354,8 @@ if __name__ == "__main__":
         kernel_combinations=kernel_combinations, 
         threshold=0.30,
         predict_Y=predict_Y,
-        removal_percentage=0.1
+        removal_percentage=0.1,
+        isFixedLikelihood=False
     )
 
     multiInputGPR.run_step_3()

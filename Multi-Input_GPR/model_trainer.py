@@ -1,3 +1,4 @@
+from copy import deepcopy
 import gpflow
 from gpflow.utilities import print_summary, set_trainable
 from sklearn.metrics import mean_squared_error
@@ -21,6 +22,36 @@ class ModelTrainer:
         print_summary(model)
 
         return model
+    
+    def train_likelihood(X, Y, composite_kernel, starting_variances=[1e-5, 1e-3, 1e-1, 1.0]):
+        best_model = None
+        best_loss = float('inf')
+
+        for start_var in starting_variances:
+            model = gpflow.models.GPR((X, Y), kernel=deepcopy(composite_kernel), noise_variance=start_var)
+            
+            # Allow the likelihood variance to be trainable
+            gpflow.set_trainable(model.likelihood, True)
+            
+            opt = gpflow.optimizers.Scipy()
+            opt_logs = opt.minimize(model.training_loss, model.trainable_variables)
+            
+            # Get the final loss
+            final_loss = opt_logs.fun
+            print(f"\nModel trained with starting variance {start_var}:")
+            print_summary(model)
+            print(f"Final loss: {final_loss}")
+
+            # Keep the model with the lowest loss
+            if final_loss < best_loss:
+                best_model = model
+                best_loss = final_loss
+
+        print("\nBest model:")
+        print_summary(best_model)
+        print(f"Best loss: {best_loss}")
+
+        return best_model
 
     def train_best_model(self, X_tf, Y_tf):
         best_kernel = None

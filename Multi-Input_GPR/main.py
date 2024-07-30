@@ -100,6 +100,21 @@ class MultiInputGPR:
         
         return X_reduced, Y_reduced, X_removed, Y_removed
     
+    # Create a composite kernel that uses different kernels for different input dimensions
+    def create_composite_kernel(self, input_dimension, kernel1_class, kernel2_class):
+        # Kernel for the first input dimension (all other assets)
+        # Create Kernel1 here
+        k1 = kernel1_class(active_dims=slice(0, input_dimension - 2))
+        #k1 = gpflow.kernels.slice(kernel1, slice(0, input_dimension - 2))
+    
+        # Kernel for the second dimension (time)
+        # Create the Kernel2 here
+        k2 = kernel2_class(active_dims=slice(input_dimension - 1, input_dimension))
+        #k2 = gpflow.kernels.slice(kernel2, slice(input_dimension - 1, input_dimension))
+        
+        # Combine the kernels
+        return k1 + k2 
+        
     def run_step_1(self) -> None:
     
         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
@@ -272,11 +287,18 @@ class MultiInputGPR:
         self.full_correlations(X, Y)
 
         #4. Train the model with the input data and the actual values of to-be-predicted stock data
-        for kernel in self.kernel_combinations:
-            model = gpflow.models.GPR(
-                (X, Y), kernel=deepcopy(kernel), noise_variance=1e-3
-            )
-            model = ModelTrainer.train_model(model)
+        self.kernel_combinations = [
+            self.create_composite_kernel(X.shape[1], k1, k2)
+            for k1, k2 in self.kernel_combinations
+        ]
+        
+        for composite_kernel in self.kernel_combinations:
+            # model = gpflow.models.GPR(
+            #     (X, Y), kernel=deepcopy(composite_kernel), noise_variance=1e-1
+            # )
+            
+            # model = ModelTrainer.train_model(model)
+            model = ModelTrainer.train_likelihood(X, Y, composite_kernel)
 
         # add test data to predict as well
         X_full.append(X_AAPL_full_tf)
@@ -314,7 +336,9 @@ if __name__ == "__main__":
 
 
     kernel_combinations = [  
-        gpflow.kernels.Exponential(), 
+        (gpflow.kernels.Exponential, gpflow.kernels.Exponential),
+       # (gpflow.kernels.Exponential(), gpflow.kernels.SquaredExponential()),
+        
     ]
 
     multiInputGPR = MultiInputGPR(

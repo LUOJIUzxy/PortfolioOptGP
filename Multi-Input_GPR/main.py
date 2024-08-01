@@ -105,8 +105,12 @@ class MultiInputGPR:
     def create_composite_kernel(self, input_dimension, kernel1_class, kernel2_class):
         # Kernel for the first input dimension (all other assets)
         # Create Kernel1 here
+
+        # Set the variance to fixed 1.0
+    
+        # k1 = kernel1_class(active_dims=slice(0, input_dimension - 2), variance=1.0)
+        # gpflow.set_trainable(k1.variance, False)
         k1 = kernel1_class(active_dims=slice(0, input_dimension - 2))
-        #k1 = gpflow.kernels.slice(kernel1, slice(0, input_dimension - 2))
     
         # Kernel for the second dimension (time)
         # Create the Kernel2 here
@@ -119,20 +123,20 @@ class MultiInputGPR:
     def run_step_1(self) -> None:
     
         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
-        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False)
+        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False)
 
         #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
         _X = []
         for feature in self.features:
             if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
-                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
             else:
-                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
             visualizer = Visualizer()
-            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=mean, std=std, filename=f'../plots/multi-input/{feature}_Day.png')
+            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_Day.png')
 
             # Calculate correlation between X and Y
-            corr = self.calculate_correlation(Y_tf * std + mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
+            corr = self.calculate_correlation(Y_tf * y_std + y_mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
             print(f"Correlation between {feature} and {self.ticker}: {corr:.4f}")
 
             if np.abs(corr) > self.threshold:
@@ -176,20 +180,20 @@ class MultiInputGPR:
     def run_step_2(self) -> None:
     
         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
-        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False)
+        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False)
 
         #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
         _X = []
         for feature in self.features:
             if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
-                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
             else:
-                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
             visualizer = Visualizer()
-            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=mean, std=std, filename=f'../plots/multi-input/{feature}_Day.png')
+            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_Day.png')
 
             # Calculate correlation between X and Y
-            corr = self.calculate_correlation(Y_tf * std + mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
+            corr = self.calculate_correlation(Y_tf * y_std + y_mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
             print(f"Correlation between {feature} and {self.ticker}: {corr:.4f}")
 
             if np.abs(corr) > self.threshold:
@@ -246,8 +250,8 @@ class MultiInputGPR:
     # Fetch Train + Test data 
     def run_step_3(self) -> None:
         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
-        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, AAPL_mean, AAPL_std = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True)
-        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, AAPL_full_mean, AAPL_full_std = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=True)
+        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True)
+        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=True)
 
         #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
         # X columns vector for training
@@ -256,19 +260,19 @@ class MultiInputGPR:
         X_full = []
         for feature in self.features:
             if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
-                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
-                X_full_tf, Y_full_tf, full_dates, full_mean, full_std = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False)
             elif feature == "SP500" or feature == "NasDaq100":
-                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
-                X_full_tf, Y_full_tf, full_dates, full_mean, full_std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False)
             else:
-                X_tf, Y_tf, dates, mean, std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
-                X_full_tf, Y_full_tf, full_dates, full_mean, full_std = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=True)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=True)
             visualizer = Visualizer()
-            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=mean, std=std, filename=f'../plots/multi-input/{feature}_Day.png')
+            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_Day.png')
 
             # Calculate correlation between X and Y
-            corr = self.calculate_correlation(Y_tf * std + mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
+            corr = self.calculate_correlation(Y_tf * y_std + y_mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
             print(f"Correlation between {feature} and {self.ticker}: {corr:.4f}")
 
             if np.abs(corr) > self.threshold:
@@ -329,7 +333,7 @@ if __name__ == "__main__":
     train_start_date = '2024-02-10'
     train_end_date = '2024-05-10'
     test_start_date = '2024-05-13'
-    test_end_date = '2024-05-15'
+    test_end_date = '2024-05-17'
 
     to_be_predicted = 'AAPL'
     assets = ['MSFT', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100', 'XAU_USD']

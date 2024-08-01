@@ -48,7 +48,7 @@ class DataHandler:
         df.fillna({'return': first_return}, inplace=True)
         df['intraday_return'] = (df['close'] - df['open']) / df['open']
         
-        return self.normalize_and_reshape(df, column=predict_Y)
+        return self.normalize_and_reshape(df, y_column=predict_Y, x_column='day_of_year')
     
     def process_2D_X(self, ticker, start_date, end_date, predict_Y='close'):
         
@@ -65,7 +65,7 @@ class DataHandler:
         df.fillna({'return': first_return}, inplace=True)
         df['intraday_return'] = (df['close'] - df['open']) / df['open']
 
-        X_tf, Y_tf, df['date'], mean, std = self.normalize_and_reshape(df, column=predict_Y)
+        X_tf, Y_tf, df['date'], (y_mean, y_std), (x_mean, x_std) = self.normalize_and_reshape(df, column=predict_Y)
 
         # # Convert TensorFlow tensors to numpy arrays
         # X_np = X_tf.numpy()
@@ -80,7 +80,7 @@ class DataHandler:
         # print(Y_np.shape)   # (n, 1)
         # print(X.shape)  # (n, 2)
             
-        return X_tf, Y_tf, df['date'], mean, std
+        return X_tf, Y_tf, df['date'], (y_mean, y_std), (x_mean, x_std)
     
     # Combine the arrays to vectorize the input
     # X is a list of tensors, e.g. [X_tf, X_tf_2, Y_tf_2]
@@ -115,17 +115,37 @@ class DataHandler:
         start_date = pd.Timestamp(self.train_start_date)
         return (date - start_date).days
 
-    def normalize_and_reshape(self, df, column='close'):
-        mean = df[column].mean()
-        std = df[column].std()
-        df[column] = (df[column] - mean) / std
-        Y = df[column].values
-        X = df['day_of_year'].values
-        Y_reshaped = Y.reshape(-1, 1)
-        X_reshaped = X.reshape(-1, 1)
-        X_tf = tf.convert_to_tensor(X_reshaped, dtype=tf.float64)
-        Y_tf = tf.convert_to_tensor(Y_reshaped, dtype=tf.float64)
-        return X_tf, Y_tf, df['date'], mean, std
+
+        # def normalize_and_reshape(self, df, column='close'):
+    #     mean = df[column].mean()
+    #     std = df[column].std()
+    #     df[column] = (df[column] - mean) / std
+    #     Y = df[column].values
+    #     X = df['day_of_year'].values
+    #     Y_reshaped = Y.reshape(-1, 1)
+    #     X_reshaped = X.reshape(-1, 1)
+    #     X_tf = tf.convert_to_tensor(X_reshaped, dtype=tf.float64)
+    #     Y_tf = tf.convert_to_tensor(Y_reshaped, dtype=tf.float64)
+    #     return X_tf, Y_tf, df['date'], mean, std
+    def normalize_and_reshape(self, df, y_column='close', x_column='day_of_year'):
+        # Normalize y_column (usually 'close')
+        y_mean = df[y_column].mean()
+        y_std = df[y_column].std()
+        df[y_column] = (df[y_column] - y_mean) / y_std
+
+        # Normalize x_column (usually 'day_of_year')
+        x_mean = df[x_column].mean()
+        x_std = df[x_column].std()
+        df[x_column] = (df[x_column] - x_mean) / x_std
+
+        # Reshape and convert to TensorFlow tensors
+        Y = df[y_column].values.reshape(-1, 1)
+        X = df[x_column].values.reshape(-1, 1)
+        
+        X_tf = tf.convert_to_tensor(X, dtype=tf.float64)
+        Y_tf = tf.convert_to_tensor(Y, dtype=tf.float64)
+
+        return X_tf, Y_tf, df['date'], (y_mean, y_std), (x_mean, x_std)
     
     def generate_future_dates(self, ticker, period='d', total_days=90):
         file_path = f'../Commodities/{ticker}/{ticker}.csv'

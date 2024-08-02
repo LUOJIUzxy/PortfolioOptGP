@@ -18,10 +18,11 @@ import tensorflow as tf
 
 class MultiInputGPR:
     
-    def __init__(self, ticker, features, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, threshold, removal_percentage, predict_Y='close', isFixedLikelihood=False):
+    def __init__(self, ticker, features, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, kernels, threshold, removal_percentage, predict_Y='close', isFixedLikelihood=False):
         self.ticker = ticker
         self.features = features
         self.kernel_combinations = kernel_combinations
+        self.kernels = kernels
         self.train_start_date = train_start_date
         self.train_end_date = train_end_date
         self.test_start_date = test_start_date
@@ -157,7 +158,7 @@ class MultiInputGPR:
 
 
         #4. Train the model with the input data and the actual values of to-be-predicted stock data
-        for kernel in self.kernel_combinations:
+        for kernel in self.kernels:
             model = gpflow.models.GPR(
                 (X, Y), kernel=deepcopy(kernel), noise_variance=1e-5
             )
@@ -215,7 +216,7 @@ class MultiInputGPR:
         X_reduced, Y_reduced, X_removed, Y_removed = self.remove_random_points(X, Y, self.removal_percentage)
 
         # 4. Train the model with the reduced data
-        for kernel in self.kernel_combinations:
+        for kernel in self.kernels:
             model = gpflow.models.GPR(
                 (X_reduced, Y_reduced), kernel=deepcopy(kernel), noise_variance=1e-5
             )
@@ -342,6 +343,10 @@ if __name__ == "__main__":
     predict_Y = 'close'
 
 
+    kernels = [
+        gpflow.kernels.Exponential(),
+    ]
+
     kernel_combinations = [  
         (gpflow.kernels.Exponential, gpflow.kernels.Exponential),
        # (gpflow.kernels.Exponential(), gpflow.kernels.SquaredExponential()),
@@ -356,12 +361,13 @@ if __name__ == "__main__":
         test_start_date=test_start_date,
         test_end_date=test_end_date,
         kernel_combinations=kernel_combinations, 
+        kernels=kernels,
         threshold=0.30,
         predict_Y=predict_Y,
         removal_percentage=0.1,
         isFixedLikelihood=False
     )
 
-    multiInputGPR.run_step_3()
+    multiInputGPR.run_step_2()
     plt.show()
 

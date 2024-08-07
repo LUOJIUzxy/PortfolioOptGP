@@ -111,7 +111,8 @@ class MultiInputGPR:
     
         # k1 = kernel1_class(active_dims=slice(0, input_dimension - 2), variance=1.0)
         # gpflow.set_trainable(k1.variance, False)
-        k1 = kernel1_class(active_dims=slice(0, input_dimension - 2))
+        k1 = kernel1_class(active_dims=slice(0, input_dimension - 1))
+        #k1 = kernel1_class(active_dims=slice(0, 1))
     
         # Kernel for the second dimension (time)
         # Create the Kernel2 here
@@ -119,7 +120,7 @@ class MultiInputGPR:
         #k2 = gpflow.kernels.slice(kernel2, slice(input_dimension - 1, input_dimension))
         
         # Combine the kernels
-        return k1 + k2 
+        return k1 * k2 
         
     def run_step_1(self) -> None:
     
@@ -286,6 +287,7 @@ class MultiInputGPR:
         #3. Concatenate multi-dimenstional input data X = [X1, X2, ...], as days * features vector
         # X_AAPL_tf should be equal to X_tf
         
+        ## Remove Time as a feature
         _X.append(X_AAPL_tf)
         X = self.data_handler.concatenate_X(_X)
 
@@ -365,9 +367,9 @@ if __name__ == "__main__":
         threshold=0.30,
         predict_Y=predict_Y,
         removal_percentage=0.1,
-        isFixedLikelihood=False
+        isFixedLikelihood=True
     )
 
-    multiInputGPR.run_step_2()
+    multiInputGPR.run_step_3()
     plt.show()
 

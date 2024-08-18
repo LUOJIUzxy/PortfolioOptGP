@@ -65,7 +65,7 @@ class DataHandler:
         df.fillna({'return': first_return}, inplace=True)
         df['intraday_return'] = (df['close'] - df['open']) / df['open']
 
-        X_tf, Y_tf, df['date'], (y_mean, y_std), (x_mean, x_std) = self.normalize_and_reshape(df, column=predict_Y)
+        X_tf, Y_tf, df['date'], (y_mean, y_std), (x_mean, x_std) = self.normalize_and_reshape(df, y_column=predict_Y)
 
         # # Convert TensorFlow tensors to numpy arrays
         # X_np = X_tf.numpy()

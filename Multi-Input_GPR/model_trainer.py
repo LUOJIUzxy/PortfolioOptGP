@@ -14,7 +14,7 @@ class ModelTrainer:
 # Technically, a kernel is a function that takes values and returns a covariance matrix telling us how those 
 #  coordinates relate to each other. However, for many users it may be more useful to develop an intuitive understanding of how the different kernels behave than to study the maths.
 # A kernel is sometimes also known as a covariance function.
-    def train_model(self, model: gpflow.models.GPR) -> gpflow.models.GPR:
+    def train_model(model: gpflow.models.GPR) -> gpflow.models.GPR:
         #model = gpflow.models.GPR((X, Y), kernel=deepcopy(kernel), noise_variance=1e-3)
         gpflow.set_trainable(model.likelihood, False)
         opt = gpflow.optimizers.Scipy()
@@ -23,7 +23,7 @@ class ModelTrainer:
 
         return model
     
-    def train_likelihood(self, X, Y, composite_kernel, starting_variances=[1e-5, 1e-3, 1e-1, 1.0]):
+    def train_likelihood(X, Y, composite_kernel, starting_variances=[1e-5, 1e-3, 1e-1, 1.0]):
         best_model = None
         best_loss = float('inf')
 

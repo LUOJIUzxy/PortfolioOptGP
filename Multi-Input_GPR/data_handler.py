@@ -7,11 +7,12 @@ import tensorflow as tf
 from OrdinalEntroPy.OrdinalEntroPy import PE, WPE, RPE, DE, RDE, RWDE
 
 class DataHandler:
-    def __init__(self, train_start_date, train_end_date, test_start_date, test_end_date):
+    def __init__(self, train_start_date, train_end_date, test_start_date, test_end_date, window_size=3):
         self.train_start_date = train_start_date
         self.train_end_date = train_end_date
         self.test_start_date = test_start_date
         self.test_end_date = test_end_date
+        self.window_size = window_size
     
     def fetch_and_save_data(self, ticker, period, start_date, end_date):
         load_dotenv()
@@ -29,8 +30,22 @@ class DataHandler:
         os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
         df.to_csv(csv_file_path, index=False)
     
+    def sliding_window_denoise(self, data, window_size, function=np.mean):
+        """
+        Apply sliding window denoising to a pandas Series.
+        """
+        # Use a centered window without allowing NaN results
+        denoised = data.rolling(window=window_size, center=True, min_periods=1).apply(function)
+        
+        # Fill NaN values at the edges
+        denoised.ffill()  # Forward fill
+        denoised.bfill()  # Backward fill for any remaining NaNs at the start
+        
+        return denoised
+
+    
     # Process single file data, return normalized X and Y, X as day_of_year, Y as return
-    def process_data(self, file_type, ticker, period, start_date, end_date, predict_Y='close', normalize=True, isFetch=False):
+    def process_data(self, file_type, ticker, period, start_date, end_date, predict_Y='close', normalize=True, isFetch=False, isDenoised=False):
         if isFetch:
             self.fetch_and_save_data(ticker, period, start_date, end_date)
             print(f'{ticker} data from {start_date} to {end_date} fetched and saved')
@@ -47,6 +62,13 @@ class DataHandler:
         first_return = df['return'].iloc[1]
         df.fillna({'return': first_return}, inplace=True)
         df['intraday_return'] = (df['close'] - df['open']) / df['open']
+
+        if isDenoised:
+            df['close'] = self.sliding_window_denoise(df['close'], self.window_size)
+
+            # Fill NaN values after denoising
+            df.ffill()
+
         
         return self.normalize_and_reshape(df, y_column=predict_Y, x_column='day_of_year')
     
@@ -144,6 +166,7 @@ class DataHandler:
         
         X_tf = tf.convert_to_tensor(X, dtype=tf.float64)
         Y_tf = tf.convert_to_tensor(Y, dtype=tf.float64)
+
 
         return X_tf, Y_tf, df['date'], (y_mean, y_std), (x_mean, x_std)
     

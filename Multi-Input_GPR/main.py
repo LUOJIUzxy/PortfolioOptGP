@@ -18,7 +18,7 @@ import tensorflow as tf
 
 class MultiInputGPR:
     
-    def __init__(self, ticker, features, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, kernels, threshold, removal_percentage, predict_Y='close', isFixedLikelihood=False):
+    def __init__(self, ticker, features, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, kernels, threshold, removal_percentage, window_size, predict_Y='close', isFixedLikelihood=False):
         self.ticker = ticker
         self.features = features
         self.kernel_combinations = kernel_combinations
@@ -27,7 +27,7 @@ class MultiInputGPR:
         self.train_end_date = train_end_date
         self.test_start_date = test_start_date
         self.test_end_date = test_end_date
-        self.data_handler = DataHandler(train_start_date, train_end_date, test_start_date, test_end_date)
+        self.data_handler = DataHandler(train_start_date, train_end_date, test_start_date, test_end_date, window_size)
         self.model_trainer = ModelTrainer(kernel_combinations)
         self.visualizer = Visualizer()
         self.predict_Y = predict_Y
@@ -252,8 +252,8 @@ class MultiInputGPR:
     # Fetch Train + Test data 
     def run_step_3(self) -> None:
         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
-        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True)
-        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=True)
+        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=True)
+        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=True, isDenoised=False)
 
         #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
         # X columns vector for training
@@ -262,14 +262,14 @@ class MultiInputGPR:
         X_full = []
         for feature in self.features:
             if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
-                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False, isDenoised=True)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False, isDenoised=True)
             elif feature == "SP500" or feature == "NasDaq100":
-                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False, isDenoised=True)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False, isDenoised=True)
             else:
-                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=True)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False, isDenoised=True)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=True, isDenoised=True)
             visualizer = Visualizer()
             visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_Day.png')
 
@@ -303,7 +303,7 @@ class MultiInputGPR:
         for composite_kernel in self.kernel_combinations:
             if self.isFixed:
                 model = gpflow.models.GPR(
-                    (X, Y), kernel=deepcopy(composite_kernel), noise_variance=1e-1
+                    (X, Y), kernel=deepcopy(composite_kernel), noise_variance=1e-3
                 )
                 
                 model = ModelTrainer.train_model(model)
@@ -363,6 +363,7 @@ if __name__ == "__main__":
         test_start_date=test_start_date,
         test_end_date=test_end_date,
         kernel_combinations=kernel_combinations, 
+        window_size=5,
         kernels=kernels,
         threshold=0.30,
         predict_Y=predict_Y,

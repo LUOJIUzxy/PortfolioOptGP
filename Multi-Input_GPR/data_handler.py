@@ -43,7 +43,27 @@ class DataHandler:
         
         return denoised
 
-    
+    def process_df(self, file_type, ticker, period, start_date, end_date, predict_Y='close'):
+        
+        file_path = f'../{file_type}/{ticker}/{ticker}_us_{period}.csv'
+        df = pd.read_csv(file_path)
+        df['date'] = pd.to_datetime(df['date'])
+
+        df = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
+        df['day_of_year'] = df['date'].apply(self.convert_to_day_of_year)
+        
+        
+        df['return'] = df['close'].pct_change()
+        first_return = df['return'].iloc[1]
+        df.fillna({'return': first_return}, inplace=True)
+        df['intraday_return'] = (df['close'] - df['open']) / df['open']
+
+
+        df.set_index('day_of_year', inplace=True)
+        df = df[[predict_Y]]
+
+        return df
+        
     # Process single file data, return normalized X and Y, X as day_of_year, Y as return
     def process_data(self, file_type, ticker, period, start_date, end_date, predict_Y='close', normalize=True, isFetch=False, isDenoised=False):
         if isFetch:

@@ -16,6 +16,8 @@ from model_trainer import ModelTrainer
 import numpy as np
 import tensorflow as tf
 
+from statsmodels.tsa.arima.model import ARIMA
+
 class MultiInputGPR:
     
     def __init__(self, ticker, features, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, kernels, threshold, removal_percentage, window_size, predict_Y='close', isFixedLikelihood=False):
@@ -303,7 +305,7 @@ class MultiInputGPR:
         for composite_kernel in self.kernel_combinations:
             if self.isFixed:
                 model = gpflow.models.GPR(
-                    (X, Y), kernel=deepcopy(composite_kernel), noise_variance=1e-3
+                    (X, Y), kernel=composite_kernel, noise_variance=1e-3
                 )
                 
                 model = ModelTrainer.train_model(model)
@@ -332,11 +334,29 @@ class MultiInputGPR:
 
         visualizer.plot_GP(X_AAPL_full_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/future_predictions_{self.ticker}.png')
 
+    def run_arima(self) -> None:
+        
+        df = self.data_handler.process_df("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y)
+        df_test = self.data_handler.process_df("Stocks", self.ticker, "d", self.test_start_date, self.test_end_date, self.predict_Y)
+        # Fit the ARIMA model
+        model = ARIMA(df, order=(3, 1, 0))
+        model_fit = model.fit()
+
+        # Make predictions
+        forecast = model_fit.forecast(steps=26)
+
+        # Print the forecasted values
+        print(forecast)
+
+        mse = mean_squared_error(df_test, forecast)
+        print(f"Mean Squared Error: {mse:.4f}")
+
+
 if __name__ == "__main__":
     train_start_date = '2024-02-10'
     train_end_date = '2024-05-10'
     test_start_date = '2024-05-13'
-    test_end_date = '2024-05-17'
+    test_end_date = '2024-06-18'
 
     to_be_predicted = 'AAPL'
     assets = ['MSFT', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100', 'XAU_USD']
@@ -363,14 +383,15 @@ if __name__ == "__main__":
         test_start_date=test_start_date,
         test_end_date=test_end_date,
         kernel_combinations=kernel_combinations, 
-        window_size=5,
+        window_size=3,
         kernels=kernels,
         threshold=0.30,
         predict_Y=predict_Y,
         removal_percentage=0.1,
-        isFixedLikelihood=True
+        isFixedLikelihood=False
     )
 
     multiInputGPR.run_step_3()
+    multiInputGPR.run_arima()
     plt.show()
 

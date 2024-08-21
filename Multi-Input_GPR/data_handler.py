@@ -17,7 +17,10 @@ class DataHandler:
     def fetch_and_save_data(self, ticker, period, start_date, end_date):
         load_dotenv()
         api_token = os.getenv('API_TOKEN')
-        url = f'https://eodhd.com/api/eod/{ticker}.US?period={period}&api_token={api_token}&fmt=json&from={start_date}&to={end_date}'
+        if ticker == 'BTC':
+            url = f'https://eodhd.com/api/eod/BTC-USD.CC?period={period}&api_token={api_token}&fmt=json&from={start_date}&to={end_date}'
+        else:
+            url = f'https://eodhd.com/api/eod/{ticker}.US?period={period}&api_token={api_token}&fmt=json&from={start_date}&to={end_date}'
         response = requests.get(url)
         try:
             response.raise_for_status()

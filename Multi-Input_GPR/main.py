@@ -359,7 +359,7 @@ if __name__ == "__main__":
     test_end_date = '2024-05-17'
 
     to_be_predicted = 'AAPL'
-    assets = ['MSFT', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100', 'XAU_USD']
+    assets = ['MSFT', 'TSLA', 'GOOGL', 'COST', 'XOM', 'JPM', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100', 'XAU_USD']
 
     timeframes = ['d', 'w', 'm']
     predict_Y = 'close'
@@ -385,10 +385,10 @@ if __name__ == "__main__":
         kernel_combinations=kernel_combinations, 
         window_size=3,
         kernels=kernels,
-        threshold=0.10,
+        threshold=0.30,
         predict_Y=predict_Y,
         removal_percentage=0.1,
-        isFixedLikelihood=True
+        isFixedLikelihood=False
     )
 
     multiInputGPR.run_step_3()

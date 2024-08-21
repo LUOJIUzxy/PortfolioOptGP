@@ -1,3 +1,4 @@
+# %%
 import pandas as pd
 import os
 import csv
@@ -28,3 +29,54 @@ os.makedirs(os.path.dirname(save_path), exist_ok=True)
 # Save the modified dataframe
 df.to_csv(save_path, index=False)
 print(f"Modified data saved to: {save_path}")
+
+# %%
+import csv
+
+from datetime import datetime
+
+def convert_csv(input_file, output_file):
+    with open(input_file, 'r', newline='') as infile, open(output_file, 'w', newline='') as outfile:
+        reader = csv.reader(infile)
+        fieldnames = ['date', 'open', 'high', 'low', 'close', 'change', 'volume']
+        writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+        
+        # Read the header
+        header = next(reader)
+        
+        writer.writeheader()
+        for row in reader:
+            date = datetime.strptime(row[0].strip('"'), '%m/%d/%Y').strftime('%Y-%m-%d')
+            new_row = {
+                'date': date,
+                'open': row[2].strip('"'),
+                'high': row[3].strip('"'),
+                'low': row[4].strip('"'),
+                'close': row[1].strip('"'),
+                'change': row[6].strip('"'),
+                'volume': row[5].strip('"') if row[5].strip('"') else '0'
+            }
+            writer.writerow(new_row)
+
+def sort_csv(file_path):
+    # Read the CSV file
+    with open(file_path, 'r', newline='') as file:
+        reader = csv.DictReader(file)
+        data = list(reader)
+    
+    # Sort the data
+    data.sort(key=lambda row: datetime.strptime(row['date'], '%Y-%m-%d'))
+    
+    # Write the sorted data back to the file
+    with open(file_path, 'w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=reader.fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+
+# Usage
+
+output_file = './Stocks/NasDaq100/NasDaq100_us_d.csv'
+input_file = './Stocks/NasDaq100/NasDaq100.csv'
+convert_csv(input_file, output_file)
+sort_csv(output_file)
+# %%

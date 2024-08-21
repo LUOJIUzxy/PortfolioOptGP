@@ -270,7 +270,7 @@ class MultiInputGPR:
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False, isDenoised=True)
                 X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False, isDenoised=True)
             else:
-                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False, isDenoised=True)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=True, isDenoised=True)
                 X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=True, isDenoised=True)
             visualizer = Visualizer()
             visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_Day.png')
@@ -305,7 +305,7 @@ class MultiInputGPR:
         for composite_kernel in self.kernel_combinations:
             if self.isFixed:
                 model = gpflow.models.GPR(
-                    (X, Y), kernel=composite_kernel, noise_variance=1e-3
+                    (X, Y), kernel=deepcopy(composite_kernel), noise_variance=1e-3
                 )
                 
                 model = ModelTrainer.train_model(model)
@@ -343,7 +343,7 @@ class MultiInputGPR:
         model_fit = model.fit()
 
         # Make predictions
-        forecast = model_fit.forecast(steps=26)
+        forecast = model_fit.forecast(steps=5)
 
         # Print the forecasted values
         print(forecast)
@@ -353,10 +353,10 @@ class MultiInputGPR:
 
 
 if __name__ == "__main__":
-    train_start_date = '2024-02-10'
+    train_start_date = '2024-02-12'
     train_end_date = '2024-05-10'
     test_start_date = '2024-05-13'
-    test_end_date = '2024-06-18'
+    test_end_date = '2024-05-17'
 
     to_be_predicted = 'AAPL'
     assets = ['MSFT', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100', 'XAU_USD']
@@ -385,10 +385,10 @@ if __name__ == "__main__":
         kernel_combinations=kernel_combinations, 
         window_size=3,
         kernels=kernels,
-        threshold=0.30,
+        threshold=0.10,
         predict_Y=predict_Y,
         removal_percentage=0.1,
-        isFixedLikelihood=False
+        isFixedLikelihood=True
     )
 
     multiInputGPR.run_step_3()

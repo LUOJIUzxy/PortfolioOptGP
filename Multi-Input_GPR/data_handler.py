@@ -78,9 +78,9 @@ class DataHandler:
         df['day_of_year'] = df['date'].apply(self.convert_to_day_of_year)
         
         
-        df['return'] = df['close'].pct_change()
-        first_return = df['return'].iloc[1]
-        df.fillna({'return': first_return}, inplace=True)
+        # df['return'] = df['close'].pct_change()
+        # first_return = df['return'].iloc[1]
+        # df.fillna({'return': first_return}, inplace=True)
         df['intraday_return'] = (df['close'] - df['open']) / df['open']
 
         if isDenoised:

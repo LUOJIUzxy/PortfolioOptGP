@@ -75,8 +75,8 @@ def sort_csv(file_path):
 
 # Usage
 
-output_file = './Stocks/NasDaq100/NasDaq100_us_d.csv'
-input_file = './Stocks/NasDaq100/NasDaq100.csv'
+output_file = './Stocks/Index/RUT2000/RUT2000_us_d.csv'
+input_file = './Stocks/Index/RUT2000/RUT2000.csv'
 convert_csv(input_file, output_file)
 sort_csv(output_file)
 # %%

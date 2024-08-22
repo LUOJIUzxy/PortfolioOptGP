@@ -254,8 +254,8 @@ class MultiInputGPR:
     # Fetch Train + Test data 
     def run_step_3(self) -> None:
         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
-        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=True)
-        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=True, isDenoised=False)
+        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=True)
+        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, "close", isFetch=True, isDenoised=False, isFiltered=False)
 
         #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
         # X columns vector for training
@@ -264,14 +264,14 @@ class MultiInputGPR:
         X_full = []
         for feature in self.features:
             if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
-                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False, isDenoised=True)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False, isDenoised=True)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=True)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False, isDenoised=False, isFiltered=False)
             elif feature == "SP500" or feature == "NasDaq100":
-                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=False, isDenoised=True)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False, isDenoised=True)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks/index", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=True)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks/Index", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False, isDenoised=False, isFiltered=False)
             else:
-                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, "close", isFetch=True, isDenoised=True)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=True, isDenoised=True)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=True)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=True, isDenoised=False, isFiltered=False)
             visualizer = Visualizer()
             visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_Day.png')
 
@@ -336,8 +336,8 @@ class MultiInputGPR:
 
     def run_arima(self) -> None:
         
-        df = self.data_handler.process_df("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y)
-        df_test = self.data_handler.process_df("Stocks", self.ticker, "d", self.test_start_date, self.test_end_date, self.predict_Y)
+        df = self.data_handler.process_df("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, 'close')
+        df_test = self.data_handler.process_df("Stocks", self.ticker, "d", self.test_start_date, self.test_end_date, 'close')
         # Fit the ARIMA model
         model = ARIMA(df, order=(3, 1, 0))
         model_fit = model.fit()
@@ -353,16 +353,16 @@ class MultiInputGPR:
 
 
 if __name__ == "__main__":
-    train_start_date = '2024-02-12'
+    train_start_date = '2024-02-10'
     train_end_date = '2024-05-10'
     test_start_date = '2024-05-13'
     test_end_date = '2024-05-17'
 
     to_be_predicted = 'AAPL'
-    assets = ['MSFT', 'TSLA', 'GOOGL', 'COST', 'XOM', 'JPM', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100', 'XAU_USD']
+    assets = ['MSFT', 'TSLA', 'GOOGL', 'COST', 'XOM', 'JPM', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
 
     timeframes = ['d', 'w', 'm']
-    predict_Y = 'close'
+    predict_Y = 'filtered_close'
 
 
     kernels = [

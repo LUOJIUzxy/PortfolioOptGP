@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 import tensorflow as tf
 from OrdinalEntroPy.OrdinalEntroPy import PE, WPE, RPE, DE, RDE, RWDE
+from scipy.ndimage import gaussian_filter
 
 class DataHandler:
     def __init__(self, train_start_date, train_end_date, test_start_date, test_end_date, window_size=3):
@@ -46,6 +47,7 @@ class DataHandler:
         
         return denoised
 
+    # For ARIMA model
     def process_df(self, file_type, ticker, period, start_date, end_date, predict_Y='close'):
         
         file_path = f'../{file_type}/{ticker}/{ticker}_us_{period}.csv'
@@ -68,7 +70,7 @@ class DataHandler:
         return df
         
     # Process single file data, return normalized X and Y, X as day_of_year, Y as return
-    def process_data(self, file_type, ticker, period, start_date, end_date, predict_Y='close', normalize=True, isFetch=False, isDenoised=False):
+    def process_data(self, file_type, ticker, period, start_date, end_date, predict_Y='filtered_close', normalize=True, isFetch=False, isDenoised=False, isFiltered=False):
         if isFetch:
             self.fetch_and_save_data(ticker, period, start_date, end_date)
             print(f'{ticker} data from {start_date} to {end_date} fetched and saved')
@@ -81,17 +83,22 @@ class DataHandler:
         df['day_of_year'] = df['date'].apply(self.convert_to_day_of_year)
         
         
-        # df['return'] = df['close'].pct_change()
-        # first_return = df['return'].iloc[1]
-        # df.fillna({'return': first_return}, inplace=True)
+        df['return'] = df['close'].pct_change()
+        first_return = df['return'].iloc[1]
+        df.fillna({'return': first_return}, inplace=True)
         df['intraday_return'] = (df['close'] - df['open']) / df['open']
 
+        ########################################
+        ### Don't Touch The Original Data!!!
+        ########################################
         if isDenoised:
-            df['close'] = self.sliding_window_denoise(df['close'], self.window_size)
+            df['denoised_close'] = self.sliding_window_denoise(df['close'], self.window_size)
 
             # Fill NaN values after denoising
             df.ffill()
-
+        
+        if isFiltered:
+            df['filtered_close'] = gaussian_filter(df['close'], sigma=1)
         
         return self.normalize_and_reshape(df, y_column=predict_Y, x_column='day_of_year')
     
@@ -172,7 +179,7 @@ class DataHandler:
     #     X_tf = tf.convert_to_tensor(X_reshaped, dtype=tf.float64)
     #     Y_tf = tf.convert_to_tensor(Y_reshaped, dtype=tf.float64)
     #     return X_tf, Y_tf, df['date'], mean, std
-    def normalize_and_reshape(self, df, y_column='close', x_column='day_of_year'):
+    def normalize_and_reshape(self, df, y_column='filtered_close', x_column='day_of_year'):
         # Normalize y_column (usually 'close')
         y_mean = df[y_column].mean()
         y_std = df[y_column].std()

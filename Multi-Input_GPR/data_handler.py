@@ -73,7 +73,7 @@ class DataHandler:
     def process_data(self, file_type, ticker, period, start_date, end_date, predict_Y='filtered_close', normalize=True, isFetch=False, isDenoised=False, isFiltered=False):
         if isFetch:
             self.fetch_and_save_data(ticker, period, start_date, end_date)
-            print(f'{ticker} data from {start_date} to {end_date} fetched and saved')
+            #print(f'{ticker} data from {start_date} to {end_date} fetched and saved')
         
         file_path = f'../{file_type}/{ticker}/{ticker}_us_{period}.csv'
         df = pd.read_csv(file_path)
@@ -167,18 +167,6 @@ class DataHandler:
         start_date = pd.Timestamp(self.train_start_date)
         return (date - start_date).days
 
-
-        # def normalize_and_reshape(self, df, column='close'):
-    #     mean = df[column].mean()
-    #     std = df[column].std()
-    #     df[column] = (df[column] - mean) / std
-    #     Y = df[column].values
-    #     X = df['day_of_year'].values
-    #     Y_reshaped = Y.reshape(-1, 1)
-    #     X_reshaped = X.reshape(-1, 1)
-    #     X_tf = tf.convert_to_tensor(X_reshaped, dtype=tf.float64)
-    #     Y_tf = tf.convert_to_tensor(Y_reshaped, dtype=tf.float64)
-    #     return X_tf, Y_tf, df['date'], mean, std
     def normalize_and_reshape(self, df, y_column='filtered_close', x_column='day_of_year'):
         # Normalize y_column (usually 'close')
         y_mean = df[y_column].mean()

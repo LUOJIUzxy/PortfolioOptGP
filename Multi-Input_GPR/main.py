@@ -9,6 +9,7 @@ from matplotlib.cm import coolwarm
 import os
 import random
 
+from portfolio_optimizer import Optimizer
 from visualizer import Visualizer
 from data_handler import DataHandler
 from model_trainer import ModelTrainer
@@ -79,7 +80,7 @@ class MultiInputGPR:
         # Print correlations between each X column and Y
         for i in range(X.shape[1]):
             corr_XiY = full_corr[i, -1]
-            print(f"Correlation between X{i+1} and Y: {corr_XiY:.4f}")
+            #print(f"Correlation between X{i+1} and Y: {corr_XiY:.4f}")
 
         return full_corr  
 
@@ -317,6 +318,8 @@ class MultiInputGPR:
         X_full = self.data_handler.concatenate_X(X_full)
         # predict the mean and variance of the to-be-predicted stock data using the trained model, with input X vector of days * features
         f_mean, f_cov = model.predict_f(X_full, full_cov=False)
+        print(f"f_mean: {f_mean[-1]}")
+        print(f"f_cov: {f_cov[-1]}")
 
         # Calculate mse for all train and test data
         # Actually should only calculate the test period data
@@ -334,6 +337,8 @@ class MultiInputGPR:
 
         visualizer.plot_GP(X_AAPL_full_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/future_predictions_{self.ticker}.png')
 
+        return [f_mean[-1][0], f_cov[-1][0]]
+    
     def run_arima(self) -> None:
         
         df = self.data_handler.process_df("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, 'close')
@@ -343,7 +348,7 @@ class MultiInputGPR:
         model_fit = model.fit()
 
         # Make predictions
-        forecast = model_fit.forecast(steps=5)
+        forecast = model_fit.forecast(steps=1)
 
         # Print the forecasted values
         print(forecast)
@@ -356,10 +361,14 @@ if __name__ == "__main__":
     train_start_date = '2024-02-10'
     train_end_date = '2024-05-10'
     test_start_date = '2024-05-13'
-    test_end_date = '2024-05-17'
+    test_end_date = '2024-05-13'
 
-    to_be_predicted = 'AAPL'
-    assets = ['MSFT', 'TSLA', 'GOOGL', 'COST', 'XOM', 'JPM', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
+    ticker1 = 'JPM'
+    ticker2 = 'AAPL'
+    ticker3 = 'LLY'
+    ticker4 = 'HLT'
+    ticker5 = 'COST'
+    assets = ['MSFT', 'TSLA', 'GOOGL', 'COST', 'XOM', 'PLD', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
 
     timeframes = ['d', 'w', 'm']
     predict_Y = 'filtered_close'
@@ -375,23 +384,44 @@ if __name__ == "__main__":
         
     ]
 
-    multiInputGPR = MultiInputGPR(
-        ticker=to_be_predicted, 
-        features=assets,
-        train_start_date=train_start_date, 
-        train_end_date=train_end_date, 
-        test_start_date=test_start_date,
-        test_end_date=test_end_date,
-        kernel_combinations=kernel_combinations, 
-        window_size=3,
-        kernels=kernels,
-        threshold=0.30,
-        predict_Y=predict_Y,
-        removal_percentage=0.1,
-        isFixedLikelihood=False
-    )
+    predicted_values = []
+    predicted_variances = []
 
-    multiInputGPR.run_step_3()
-    multiInputGPR.run_arima()
+    for to_be_predicted in [ticker1, ticker2, ticker3, ticker4, ticker5]:
+        print(f"Predicting {to_be_predicted}")
+        multiInputGPR = MultiInputGPR(
+            ticker=to_be_predicted, 
+            features=assets,
+            train_start_date=train_start_date, 
+            train_end_date=train_end_date, 
+            test_start_date=test_start_date,
+            test_end_date=test_end_date,
+            kernel_combinations=kernel_combinations, 
+            window_size=3,
+            kernels=kernels,
+            threshold=0.30,
+            predict_Y=predict_Y,
+            removal_percentage=0.1,
+            isFixedLikelihood=False
+        )
+        predicted = multiInputGPR.run_step_3()
+        predicted_values.append(predicted[0])
+        predicted_variances.append(predicted[1])
+ 
+        #multiInputGPR.run_arima()
+
+    print(predicted_values)
+    cov = np.diag(predicted_variances)
+    optimizer = Optimizer(lambda_=0.01)
+    print(cov)
+
+        # Risk-free rate (daily)
+    risk_free_rate = 0.01 / 252  # Example daily rate
+
+    # Set predictions
+    optimizer.set_predictions(predicted_values, predicted_variances, risk_free_rate)
+    # Optimize portfolio
+    optimal_weights = optimizer.optimize_portfolio()
+    print("Optimal asset allocation:", optimal_weights)
     plt.show()
 

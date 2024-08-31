@@ -24,6 +24,19 @@ class Optimizer:
         # Set the risk-free rate
         self.r_f = r_f
     
+    def set_predictions_cml(self, predicted_returns, predicted_variances, r_f):
+        # Convert TensorFlow tensors to NumPy arrays and calculate cumulative returns
+        self.mu = np.array([np.prod([1 + ret.numpy() for ret in asset_returns]) - 1 
+                            for asset_returns in predicted_returns])
+        variances = np.array([np.sum([var.numpy() for var in asset_variances]) 
+                              for asset_variances in predicted_variances])
+        
+        # Constructing a diagonal covariance matrix from variances (assuming no covariance between assets)
+        self.Sigma = np.diag(variances)
+        
+        # Set the risk-free rate
+        self.r_f = r_f
+    
     # Objective function (negative Sharpe ratio)
     def objective(self, w):
         if self.mu is None or self.Sigma is None or self.r_f is None:
@@ -32,6 +45,34 @@ class Optimizer:
         portfolio_volatility = np.sqrt(np.dot(w.T, np.dot(self.Sigma, w)))
         sharpe_ratio = (portfolio_return - self.r_f) / portfolio_volatility
         return -sharpe_ratio
+
+    def returns_objective(self, w):
+            return -np.dot(self.mu, w)  # Negative because we are minimizing by default
+    
+    def uncertainty_objective(self, w):
+            return np.sqrt(np.dot(w.T, np.dot(self.Sigma, w)))
+    
+    def maximize_returns(self):
+         
+        result = minimize(
+            self.returns_objective,
+            self.initial_weights,
+            bounds=self.bounds,
+            constraints=self.constraints,
+            method='SLSQP'
+        )
+        return result.x
+
+    def minimize_uncertainty(self):
+        
+        result = minimize(
+            self.uncertainty_objective,
+            self.initial_weights,
+            bounds=self.bounds,
+            constraints=self.constraints,
+            method='SLSQP'
+        )
+        return result.x
 
     def loss_fn(self, weights, Y, f_mean_daily, f_mean_weekly, f_mean_monthly):
         alpha, beta = weights

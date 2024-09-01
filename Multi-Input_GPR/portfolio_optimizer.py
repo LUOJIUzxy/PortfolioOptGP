@@ -52,24 +52,28 @@ class Optimizer:
     def uncertainty_objective(self, w):
             return np.sqrt(np.dot(w.T, np.dot(self.Sigma, w)))
     
-    def maximize_returns(self):
-         
+    def maximize_returns(self, max_volatility):
+        volatility_constraint = {'type': 'ineq', 'fun': lambda w: max_volatility - np.sqrt(np.dot(w.T, np.dot(self.Sigma, w)))}
+        constraints = [self.constraints, volatility_constraint]
+
         result = minimize(
             self.returns_objective,
             self.initial_weights,
             bounds=self.bounds,
-            constraints=self.constraints,
+            constraints=constraints,
             method='SLSQP'
         )
         return result.x
 
-    def minimize_uncertainty(self):
+    def minimize_uncertainty(self, min_return):
+        return_constraint = {'type': 'ineq', 'fun': lambda w: np.dot(self.mu, w) - min_return}
+        constraints = [self.constraints, return_constraint]
         
         result = minimize(
             self.uncertainty_objective,
             self.initial_weights,
             bounds=self.bounds,
-            constraints=self.constraints,
+            constraints=constraints,
             method='SLSQP'
         )
         return result.x
@@ -102,3 +106,11 @@ class Optimizer:
             method='SLSQP'
         )
         return result.x
+    
+    def calculate_portfolio_performance(self, weights):
+        """
+        Calculate the portfolio return and volatility based on the given weights.
+        """
+        portfolio_return = np.dot(self.mu, weights)
+        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(self.Sigma, weights)))
+        return portfolio_return, portfolio_volatility

@@ -70,7 +70,7 @@ class DataHandler:
         return df
         
     # Process single file data, return normalized X and Y, X as day_of_year, Y as return
-    def process_data(self, file_type, ticker, period, start_date, end_date, predict_Y='filtered_close', normalize=True, isFetch=False, isDenoised=False, isFiltered=False):
+    def process_data(self, file_type, ticker, period, start_date, end_date, predict_Y='return', normalize=True, isFetch=False, isDenoised=False, isFiltered=False):
         if isFetch:
             self.fetch_and_save_data(ticker, period, start_date, end_date)
             #print(f'{ticker} data from {start_date} to {end_date} fetched and saved')

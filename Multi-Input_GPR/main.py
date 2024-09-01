@@ -21,7 +21,7 @@ from statsmodels.tsa.arima.model import ARIMA
 
 class MultiInputGPR:
     
-    def __init__(self, ticker, features, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, kernels, threshold, removal_percentage, window_size, predict_Y='close', isFixedLikelihood=False):
+    def __init__(self, ticker, features, train_start_date, train_end_date, test_start_date, test_end_date, kernel_combinations, kernels, threshold, removal_percentage, window_size, predict_Y='return', isFixedLikelihood=False):
         self.ticker = ticker
         self.features = features
         self.kernel_combinations = kernel_combinations
@@ -256,7 +256,7 @@ class MultiInputGPR:
     def run_step_3(self) -> None:
         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
         X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=True)
-        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, "close", isFetch=True, isDenoised=False, isFiltered=False)
+        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
 
         #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
         # X columns vector for training
@@ -266,13 +266,13 @@ class MultiInputGPR:
         for feature in self.features:
             if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=True)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
             elif feature == "SP500" or feature == "NasDaq100":
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks/index", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=True)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks/Index", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=False, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks/Index", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
             else:
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=True)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "close", isFetch=True, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
             visualizer = Visualizer()
             visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_Day.png')
 
@@ -371,7 +371,7 @@ if __name__ == "__main__":
     assets = ['MSFT', 'TSLA', 'GOOGL', 'COST', 'XOM', 'PLD', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
 
     timeframes = ['d', 'w', 'm']
-    predict_Y = 'filtered_close'
+    predict_Y = 'return'
 
 
     kernels = [
@@ -416,12 +416,31 @@ if __name__ == "__main__":
     print(cov)
 
         # Risk-free rate (daily)
-    risk_free_rate = 0.01 / 252  # Example daily rate
+    risk_free_rate = 0.01 / 252  
+
+    max_volatility_threshold = 0.02  # Example threshold for maximum volatility
+    min_return_threshold = 0.005 
 
     # Set predictions
     optimizer.set_predictions(predicted_values, predicted_variances, risk_free_rate)
     # Optimize portfolio
-    optimal_weights = optimizer.optimize_portfolio()
-    print("Optimal asset allocation:", optimal_weights)
+    # threshold = 0.1
+    #optimal_weights = optimizer.optimize_portfolio()
+    # threshold = 0.1
+    optimal_weights_max_sharpe = optimizer.optimize_portfolio()
+    optimal_weights_max_return = optimizer.maximize_returns(max_volatility_threshold)
+    optimal_weights_min_volatility = optimizer.minimize_uncertainty(min_return_threshold)
+
+    portfolio_return, portfolio_volatility = optimizer.calculate_portfolio_performance(optimal_weights_max_sharpe)
+    print(f"Optimal asset allocation (Sharpe ratio): {optimal_weights_max_sharpe}")
+    print(f"Portfolio return: {portfolio_return:.4f}, Portfolio volatility: {portfolio_volatility:.4f}")
+
+    portfolio_return_max, portfolio_volatility_max = optimizer.calculate_portfolio_performance(optimal_weights_max_return)
+    print(f"Optimal asset allocation (Maximize Returns): {optimal_weights_max_return}")
+    print(f"Portfolio return: {portfolio_return_max:.4f}, Portfolio volatility: {portfolio_volatility_max:.4f}")
+
+    portfolio_return_min, portfolio_volatility_min = optimizer.calculate_portfolio_performance(optimal_weights_min_volatility)
+    print(f"Optimal asset allocation (Minimize Uncertainty): {optimal_weights_min_volatility}")
+    print(f"Portfolio return: {portfolio_return_min:.4f}, Portfolio volatility: {portfolio_volatility_min:.4f}")
     plt.show()
 

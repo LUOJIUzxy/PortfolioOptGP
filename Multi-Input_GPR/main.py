@@ -52,8 +52,8 @@ class MultiInputGPR:
         # Calculate correlation
         corr_matrix = np.corrcoef([X, Y])
 
-        print("\nCorrelation Matrix:")
-        print(corr_matrix)
+        # print("\nCorrelation Matrix:")
+        # print(corr_matrix)
 
         return corr_matrix[0, 1]
 
@@ -337,7 +337,7 @@ class MultiInputGPR:
 
         visualizer.plot_GP(X_AAPL_full_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/future_predictions_{self.ticker}.png')
 
-        return [f_mean[-1][0], f_cov[-1][0]]
+        return [f_mean[-2:], f_cov[-2:]]
     
     def run_arima(self) -> None:
         
@@ -361,14 +361,14 @@ if __name__ == "__main__":
     train_start_date = '2024-02-10'
     train_end_date = '2024-05-10'
     test_start_date = '2024-05-13'
-    test_end_date = '2024-05-13'
+    test_end_date = '2024-05-14'
 
     ticker1 = 'JPM'
     ticker2 = 'AAPL'
-    ticker3 = 'LLY'
+    ticker3 = 'AMGN'
     ticker4 = 'HLT'
     ticker5 = 'COST'
-    assets = ['MSFT', 'TSLA', 'GOOGL', 'COST', 'XOM', 'PLD', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
+    assets = ['MSFT', 'TSLA', 'GOOGL', 'JNJ', 'XOM', 'PLD', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
 
     timeframes = ['d', 'w', 'm']
     predict_Y = 'return'
@@ -384,6 +384,8 @@ if __name__ == "__main__":
         
     ]
 
+    predicted_values_1 = []
+    predicted_variances_1 = []
     predicted_values = []
     predicted_variances = []
 
@@ -405,24 +407,35 @@ if __name__ == "__main__":
             isFixedLikelihood=False
         )
         predicted = multiInputGPR.run_step_3()
+        print(predicted)
+        predicted_values_1.append(predicted[0][0][0])
+        predicted_variances_1.append(predicted[1][0][0])
+        # calculate cumulative returns
         predicted_values.append(predicted[0])
         predicted_variances.append(predicted[1])
  
         #multiInputGPR.run_arima()
 
-    print(predicted_values)
-    cov = np.diag(predicted_variances)
-    optimizer = Optimizer(lambda_=0.01)
+    for i in range(len(predicted_values_1)):
+        print(f"Day 1 Predicted value: {predicted_values_1[i]}, Predicted variance: {predicted_variances_1[i]}")
+    
+    for i in range(len(predicted_values)):
+        print(f"Two Days Predicted value: {predicted_values[i]}, Predicted variance: {predicted_variances[i]}")
+    
+    print(predicted_values_1)
+    cov = np.diag(predicted_variances_1)
     print(cov)
+    optimizer = Optimizer(lambda_=0.01)
+    
 
-        # Risk-free rate (daily)
+    # Risk-free rate (daily)
     risk_free_rate = 0.01 / 252  
 
     max_volatility_threshold = 0.02  # Example threshold for maximum volatility
     min_return_threshold = 0.005 
 
-    # Set predictions
-    optimizer.set_predictions(predicted_values, predicted_variances, risk_free_rate)
+    # 1. Set predictions
+    optimizer.set_predictions(predicted_values_1, predicted_variances_1, risk_free_rate)
     # Optimize portfolio
     # threshold = 0.1
     #optimal_weights = optimizer.optimize_portfolio()
@@ -432,6 +445,7 @@ if __name__ == "__main__":
     optimal_weights_min_volatility = optimizer.minimize_uncertainty(min_return_threshold)
 
     portfolio_return, portfolio_volatility = optimizer.calculate_portfolio_performance(optimal_weights_max_sharpe)
+    print("########################## Portfolio for Day 1 ##########################")
     print(f"Optimal asset allocation (Sharpe ratio): {optimal_weights_max_sharpe}")
     print(f"Portfolio return: {portfolio_return:.4f}, Portfolio volatility: {portfolio_volatility:.4f}")
 
@@ -442,5 +456,26 @@ if __name__ == "__main__":
     portfolio_return_min, portfolio_volatility_min = optimizer.calculate_portfolio_performance(optimal_weights_min_volatility)
     print(f"Optimal asset allocation (Minimize Uncertainty): {optimal_weights_min_volatility}")
     print(f"Portfolio return: {portfolio_return_min:.4f}, Portfolio volatility: {portfolio_volatility_min:.4f}")
+    
+    # 2. Calculate cml for the second days, and optimize the portfolio based on the cumulative returns
+    optimizer.set_predictions_cml(predicted_values, predicted_variances, risk_free_rate)
+    optimal_weights_max_sharpe = optimizer.optimize_portfolio()
+    optimal_weights_max_return = optimizer.maximize_returns(max_volatility_threshold)
+    optimal_weights_min_volatility = optimizer.minimize_uncertainty(min_return_threshold)
+
+    portfolio_return, portfolio_volatility = optimizer.calculate_portfolio_performance(optimal_weights_max_sharpe)
+    print("########################## Portfolio for Day 2 ##########################")
+    
+    print(f"Optimal asset allocation (Sharpe ratio): {optimal_weights_max_sharpe}")
+    print(f"Portfolio return: {portfolio_return:.4f}, Portfolio volatility: {portfolio_volatility:.4f}")
+
+    portfolio_return_max, portfolio_volatility_max = optimizer.calculate_portfolio_performance(optimal_weights_max_return)
+    print(f"Optimal asset allocation (Maximize Returns): {optimal_weights_max_return}")
+    print(f"Portfolio return: {portfolio_return_max:.4f}, Portfolio volatility: {portfolio_volatility_max:.4f}")
+
+    portfolio_return_min, portfolio_volatility_min = optimizer.calculate_portfolio_performance(optimal_weights_min_volatility)
+    print(f"Optimal asset allocation (Minimize Uncertainty): {optimal_weights_min_volatility}")
+    print(f"Portfolio return: {portfolio_return_min:.4f}, Portfolio volatility: {portfolio_volatility_min:.4f}")
+    
     plt.show()
 

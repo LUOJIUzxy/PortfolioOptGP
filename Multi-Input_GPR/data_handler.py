@@ -73,8 +73,7 @@ class DataHandler:
     def process_data(self, file_type, ticker, period, start_date, end_date, predict_Y='return', normalize=True, isFetch=False, isDenoised=False, isFiltered=False):
         if isFetch:
             self.fetch_and_save_data(ticker, period, start_date, end_date)
-            #print(f'{ticker} data from {start_date} to {end_date} fetched and saved')
-        
+            
         file_path = f'../{file_type}/{ticker}/{ticker}_us_{period}.csv'
         df = pd.read_csv(file_path)
         df['date'] = pd.to_datetime(df['date'])
@@ -119,19 +118,7 @@ class DataHandler:
 
         X_tf, Y_tf, df['date'], (y_mean, y_std), (x_mean, x_std) = self.normalize_and_reshape(df, y_column=predict_Y)
 
-        # # Convert TensorFlow tensors to numpy arrays
-        # X_np = X_tf.numpy()
-        # Y_np = Y_tf.numpy()
         
-        # # Ensure Y is 2D
-        # if Y_np.ndim == 1:
-        #     Y_np = Y_np.reshape(-1, 1)
-        
-        # X = np.column_stack((X_np, Y_np))
-        # print(X_np.shape)  # (n, 1)
-        # print(Y_np.shape)   # (n, 1)
-        # print(X.shape)  # (n, 2)
-            
         return X_tf, Y_tf, df['date'], (y_mean, y_std), (x_mean, x_std)
     
     # Combine the arrays to vectorize the input

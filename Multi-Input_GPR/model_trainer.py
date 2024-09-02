@@ -19,7 +19,7 @@ class ModelTrainer:
         gpflow.set_trainable(model.likelihood, False)
         opt = gpflow.optimizers.Scipy()
         opt.minimize(model.training_loss, model.trainable_variables)
-        print_summary(model)
+        #print_summary(model)
 
         return model
     
@@ -38,9 +38,9 @@ class ModelTrainer:
             
             # Get the final loss
             final_loss = opt_logs.fun
-            print(f"\nModel trained with starting variance {start_var}:")
-            print_summary(model)
-            print(f"Final loss: {final_loss}")
+            #print(f"\nModel trained with starting variance {start_var}:")
+            #print_summary(model)
+            #print(f"Final loss: {final_loss}")
 
             # Keep the model with the lowest loss
             if final_loss < best_loss:

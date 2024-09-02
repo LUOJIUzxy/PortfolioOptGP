@@ -25,7 +25,9 @@ class Optimizer:
         self.r_f = r_f
     
     def set_predictions_cml(self, predicted_returns, predicted_variances, r_f):
-        # Convert TensorFlow tensors to NumPy arrays and calculate cumulative returns
+        # Calculate cumulative returns for multiple time periods returns
+        # (1 + r1) * (1 + r2) * ... * (1 + rn) - 1
+        # Return an array of cumulative returns for each asset
         self.mu = np.array([np.prod([1 + ret.numpy() for ret in asset_returns]) - 1 
                             for asset_returns in predicted_returns])
         variances = np.array([np.sum([var.numpy() for var in asset_variances]) 
@@ -107,6 +109,8 @@ class Optimizer:
         )
         return result.x
     
+
+    
     def calculate_portfolio_performance(self, weights):
         """
         Calculate the portfolio return and volatility based on the given weights.
@@ -114,3 +118,5 @@ class Optimizer:
         portfolio_return = np.dot(self.mu, weights)
         portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(self.Sigma, weights)))
         return portfolio_return, portfolio_volatility
+    
+    

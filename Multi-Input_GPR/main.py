@@ -431,7 +431,7 @@ if __name__ == "__main__":
     # Risk-free rate (daily)
     risk_free_rate = 0.01 / 252  
 
-    max_volatility_threshold = 0.02  # Example threshold for maximum volatility
+    max_volatility_threshold = 0.02  
     min_return_threshold = 0.005 
 
     # 1. Set predictions

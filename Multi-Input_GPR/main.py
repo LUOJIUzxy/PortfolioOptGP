@@ -9,10 +9,10 @@ from matplotlib.cm import coolwarm
 import os
 import random
 
-from portfolio_optimizer import Optimizer
-from visualizer import Visualizer
-from data_handler import DataHandler
-from model_trainer import ModelTrainer
+from optimization.optimizer import Optimizer
+from utils.visualizer import Visualizer
+from utils.data_handler import DataHandler
+from models.model_trainer import ModelTrainer
 
 import numpy as np
 import tensorflow as tf

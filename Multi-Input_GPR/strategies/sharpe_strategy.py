@@ -1,4 +1,7 @@
-from strategies.strategy import Strategy
+# This file contains the SharpeRatioStrategy class, which is a subclass of the Strategy class.
+# The SharpeRatioStrategy class is used to optimize a portfolio to maximize the Sharpe ratio.
+# The optimize method of the SharpeRatioStrategy class calls the optimize_portfolio method of the optimizer object to optimize the portfolio.
+from Strategies.strategy import Strategy
 
 class SharpeRatioStrategy(Strategy):
     """

@@ -1,7 +1,9 @@
-from strategies.strategy import Strategy
+from Strategies.strategy import Strategy
+from returns import Return
+from volatilities import Volatility
 
 class Portfolio:
-    def __init__(self, assets, optimizer, strategy: Strategy, risk_free_rate=0.01/252, lambda_=0.01, broker_fee=0, regularization=False):
+    def __init__(self, assets, asset_returns, predicted_volatilities, weights_df, optimizer, strategy: Strategy, risk_free_rate=0.01/252, lambda_=0.01, broker_fee=0, regularization=False):
         """
         Initialize the Portfolio with a list of assets, optimizer, strategy, and optional parameters for fees and regularization.
         
@@ -15,16 +17,22 @@ class Portfolio:
         """
         self.assets = assets
         self.optimizer = optimizer
-        self.strategy = strategy if strategy else Strategy()  # Default to a basic strategy if none is provided
+        # Default to a basic strategy if none is provided
+        self.strategy = strategy if strategy else Strategy()  
         self.risk_free_rate = risk_free_rate
         self.lambda_ = lambda_
         self.broker_fee = broker_fee
         self.regularization = regularization
+
+        # Initialize the Return and Volatility classes, with the predicted asset returns and volatilities from GPR
+        self.return_calculator = Return(asset_returns, weights_df)
+        self.volatility_calculator = Volatility(predicted_volatilities, weights_df)
+
         self.returns = None
         self.variances = None
 
+    """Set the predicted returns and variances for optimization."""
     def set_returns(self, returns, variances):
-        """Set the predicted returns and variances for optimization."""
         self.returns = returns
         self.variances = variances
         self.optimizer.set_predictions(self.returns, self.variances, self.risk_free_rate)

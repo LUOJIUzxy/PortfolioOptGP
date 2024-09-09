@@ -9,10 +9,14 @@ from matplotlib.cm import coolwarm
 import os
 import random
 
-from optimization.optimizer import Optimizer
+from Optimization.optimizer import Optimizer
 from utils.visualizer import Visualizer
 from utils.data_handler import DataHandler
 from models.model_trainer import ModelTrainer
+
+from Strategies.sharpe_strategy import SharpeRatioStrategy
+from Strategies.max_return_strategy import MaxReturnStrategy
+from Strategies.min_volatility_strategy import MinVolatilityStrategy
 
 import numpy as np
 import tensorflow as tf
@@ -423,7 +427,6 @@ if __name__ == "__main__":
     for i in range(len(predicted_values)):
         print(f"Two Days Predicted value: {predicted_values[i]}, Predicted variance: {predicted_variances[i]}")
     
-    print(predicted_values_1)
     cov = np.diag(predicted_variances_1)
     print(cov)
     optimizer = Optimizer(lambda_=0.01)
@@ -441,40 +444,64 @@ if __name__ == "__main__":
     # threshold = 0.1
     #optimal_weights = optimizer.optimize_portfolio()
     # threshold = 0.1
-    optimal_weights_max_sharpe = optimizer.optimize_portfolio()
-    optimal_weights_max_return = optimizer.maximize_returns(max_volatility_threshold)
-    optimal_weights_min_volatility = optimizer.minimize_uncertainty(min_return_threshold)
 
-    portfolio_return, portfolio_volatility = optimizer.calculate_portfolio_performance(optimal_weights_max_sharpe)
+    # Differemnt optimization strategies
+    strategy1 = SharpeRatioStrategy()
+    strategy1.set_optimizer(optimizer)
+    optimal_weights_max_sharpe = strategy1.optimize()
+
+    strategy2 = MaxReturnStrategy()
+    strategy2.set_optimizer(optimizer)
+    optimal_weights_max_return = strategy2.optimize(max_volatility_threshold)
+
+    strategy3 = MinVolatilityStrategy()
+    strategy3.set_optimizer(optimizer)
+    optimal_weights_min_volatility = strategy3.optimize(min_return_threshold)
+
+    #optimal_weights_max_sharpe = optimizer.optimize_portfolio()
+    #optimal_weights_max_return = optimizer.maximize_returns(max_volatility_threshold)
+    #optimal_weights_min_volatility = optimizer.minimize_uncertainty(min_return_threshold)
+
+    #portfolio_return, portfolio_volatility = optimizer.calculate_portfolio_performance(optimal_weights_max_sharpe)
+    portfolio_return, portfolio_volatility = strategy1.calculate_portfolio_performance(optimal_weights_max_sharpe)
     print("########################## Portfolio for Day 1 ##########################")
     print(f"Optimal asset allocation (Sharpe ratio): {optimal_weights_max_sharpe}")
     print(f"Portfolio return: {portfolio_return:.4f}, Portfolio volatility: {portfolio_volatility:.4f}")
 
-    portfolio_return_max, portfolio_volatility_max = optimizer.calculate_portfolio_performance(optimal_weights_max_return)
+    #portfolio_return_max, portfolio_volatility_max = optimizer.calculate_portfolio_performance(optimal_weights_max_return)
+    portfolio_return_max, portfolio_volatility_max = strategy2.calculate_portfolio_performance(optimal_weights_max_return)
     print(f"Optimal asset allocation (Maximize Returns): {optimal_weights_max_return}")
     print(f"Portfolio return: {portfolio_return_max:.4f}, Portfolio volatility: {portfolio_volatility_max:.4f}")
 
-    portfolio_return_min, portfolio_volatility_min = optimizer.calculate_portfolio_performance(optimal_weights_min_volatility)
+    #portfolio_return_min, portfolio_volatility_min = optimizer.calculate_portfolio_performance(optimal_weights_min_volatility)
+    portfolio_return_min, portfolio_volatility_min = strategy3.calculate_portfolio_performance(optimal_weights_min_volatility)
     print(f"Optimal asset allocation (Minimize Uncertainty): {optimal_weights_min_volatility}")
     print(f"Portfolio return: {portfolio_return_min:.4f}, Portfolio volatility: {portfolio_volatility_min:.4f}")
     
     # 2. Calculate cml for the second days, and optimize the portfolio based on the cumulative returns
     optimizer.set_predictions_cml(predicted_values, predicted_variances, risk_free_rate)
-    optimal_weights_max_sharpe = optimizer.optimize_portfolio()
-    optimal_weights_max_return = optimizer.maximize_returns(max_volatility_threshold)
-    optimal_weights_min_volatility = optimizer.minimize_uncertainty(min_return_threshold)
 
-    portfolio_return, portfolio_volatility = optimizer.calculate_portfolio_performance(optimal_weights_max_sharpe)
+    optimal_weights_max_sharpe = strategy1.optimize()
+    optimal_weights_max_return = strategy2.optimize(max_volatility_threshold)
+    optimal_weights_min_volatility = strategy3.optimize(min_return_threshold)
+    # optimal_weights_max_sharpe = optimizer.optimize_portfolio()
+    # optimal_weights_max_return = optimizer.maximize_returns(max_volatility_threshold)
+    # optimal_weights_min_volatility = optimizer.minimize_uncertainty(min_return_threshold)
+
+    #portfolio_return, portfolio_volatility = optimizer.calculate_portfolio_performance(optimal_weights_max_sharpe)
+    portfolio_return, portfolio_volatility = strategy1.calculate_portfolio_performance(optimal_weights_max_sharpe)
     print("########################## Portfolio for Day 2 ##########################")
     
     print(f"Optimal asset allocation (Sharpe ratio): {optimal_weights_max_sharpe}")
     print(f"Portfolio return: {portfolio_return:.4f}, Portfolio volatility: {portfolio_volatility:.4f}")
 
-    portfolio_return_max, portfolio_volatility_max = optimizer.calculate_portfolio_performance(optimal_weights_max_return)
+    #portfolio_return_max, portfolio_volatility_max = optimizer.calculate_portfolio_performance(optimal_weights_max_return)
+    portfolio_return_max, portfolio_volatility_max = strategy2.calculate_portfolio_performance(optimal_weights_max_return)
     print(f"Optimal asset allocation (Maximize Returns): {optimal_weights_max_return}")
     print(f"Portfolio return: {portfolio_return_max:.4f}, Portfolio volatility: {portfolio_volatility_max:.4f}")
 
-    portfolio_return_min, portfolio_volatility_min = optimizer.calculate_portfolio_performance(optimal_weights_min_volatility)
+    #portfolio_return_min, portfolio_volatility_min = optimizer.calculate_portfolio_performance(optimal_weights_min_volatility)
+    portfolio_return_min, portfolio_volatility_min = strategy3.calculate_portfolio_performance(optimal_weights_min_volatility)
     print(f"Optimal asset allocation (Minimize Uncertainty): {optimal_weights_min_volatility}")
     print(f"Portfolio return: {portfolio_return_min:.4f}, Portfolio volatility: {portfolio_volatility_min:.4f}")
     

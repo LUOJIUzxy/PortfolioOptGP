@@ -1,11 +1,11 @@
-from strategies.strategy import Strategy
+from Strategies.strategy import Strategy
 
 class MinVolatilityStrategy(Strategy):
     """
     Strategy to minimize portfolio volatility given a minimum return constraint.
     """
 
-    def optimize(self, max_volatility=None, min_return=None):
+    def optimize(self, min_return=None):
         """
         Optimize portfolio to minimize volatility under a minimum return constraint.
         

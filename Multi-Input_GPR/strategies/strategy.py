@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from Optimization.optimizer import Optimizer
 
 class Strategy(ABC):
     """
@@ -9,7 +10,7 @@ class Strategy(ABC):
         """Initialize common strategy parameters."""
         self.optimizer = None
 
-    def set_optimizer(self, optimizer):
+    def set_optimizer(self, optimizer: Optimizer):
         """Set the optimizer for the strategy."""
         self.optimizer = optimizer
 

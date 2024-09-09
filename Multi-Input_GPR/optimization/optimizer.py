@@ -1,6 +1,7 @@
 from scipy.optimize import minimize
 from sklearn.metrics import mean_squared_error
 import numpy as np
+import pandas as pd
 
 class Optimizer:
     def __init__(self, lambda_=0.01):
@@ -109,8 +110,6 @@ class Optimizer:
         )
         return result.x
     
-
-    
     def calculate_portfolio_performance(self, weights):
         """
         Calculate the portfolio return and volatility based on the given weights.
@@ -119,4 +118,60 @@ class Optimizer:
         portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(self.Sigma, weights)))
         return portfolio_return, portfolio_volatility
     
+    '''
+    Below are methods for Backtesting: calculating cumulative return and portfolio returns with time-varying weights.
+    '''
+    
+    def calculate_cumulative_return(self, portfolio_returns):
+        """
+        Calculate cumulative return of the portfolio over time.
+        
+        :param portfolio_returns: Array or list of portfolio returns for each period (e.g., daily returns).
+        :return: Cumulative return as a percentage.
+        """
+        # Convert periodic returns to cumulative return
+        cumulative_return = np.prod(1 + portfolio_returns) - 1
+        return cumulative_return
+    
+
+    '''
+    asset_data = {
+        'Asset_A': [0.01, 0.02, -0.005],
+        'Asset_B': [0.005, 0.01, -0.002],
+        'Asset_C': [0.02, 0.015, 0.0]
+    }, asset_returns = pd.DataFrame(asset_data)
+
+    weights_data = {
+        'Asset_A': [0.4, 0.35, 0.45],
+        'Asset_B': [0.3, 0.35, 0.25],
+        'Asset_C': [0.3, 0.3, 0.3]
+    }, weights_df = pd.DataFrame(weights_data)
+
+    predicted_volatilities_data = {
+        'Asset_A': [0.02, 0.025, 0.018],
+        'Asset_B': [0.015, 0.017, 0.014],
+        'Asset_C': [0.01, 0.012, 0.011]
+    }
+
+    predicted_volatilities = pd.DataFrame(predicted_volatilities_data)
+    '''
+    def calculate_portfolio_returns_with_time_varying_weights(asset_returns, weights_df, predicted_volatilities):
+        """
+        Calculate portfolio returns and portfolio volatility using time-varying weights and predicted volatilities.
+        
+        Return: (portfolio_returns, portfolio_volatility)
+        """
+        # Ensure that asset_returns, weights_df, and predicted_volatilities have the same number of rows (same periods)
+        assert asset_returns.shape[0] == weights_df.shape[0] == predicted_volatilities.shape[0], "Mismatch in time periods."
+        
+        # Calculate portfolio returns for each day
+        portfolio_returns = (asset_returns * weights_df).sum(axis=1)
+        
+        # Calculate portfolio variance and volatility for each day
+        portfolio_volatility = np.sqrt(
+            (weights_df ** 2 * predicted_volatilities ** 2).sum(axis=1)
+        )
+        
+        return pd.Series(portfolio_returns, index=asset_returns.index), pd.Series(portfolio_volatility, index=asset_returns.index)
+        
     

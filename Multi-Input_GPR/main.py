@@ -290,7 +290,7 @@ class MultiInputGPR:
         #3. Concatenate multi-dimenstional input data X = [X1, X2, ...], as days * features vector
         # X_AAPL_tf should be equal to X_tf
         
-        ## Remove Time as a feature
+        ## Add Time as a feature
         _X.append(X_AAPL_tf)
         X = self.data_handler.concatenate_X(_X)
 
@@ -337,6 +337,7 @@ class MultiInputGPR:
 
         visualizer.plot_GP(X_AAPL_full_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/future_predictions_{self.ticker}.png')
 
+        # Return two-day predictions
         return [f_mean[-2:], f_cov[-2:]]
     
     def run_arima(self) -> None:

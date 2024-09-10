@@ -98,9 +98,9 @@ class Portfolio:
         print(f"Optimal weights ({strategy_name}): {optimal_weights}")
         print(f"Portfolio return: {portfolio_return:.4f}, Portfolio volatility: {portfolio_volatility:.4f}")
         
-        return optimal_weights, portfolio_return, portfolio_volatility
+        return optimal_weights
 
-    def backtest_portfolio(self, historical_returns, historical_volatilities, strategy_name='sharpe', max_volatility=0.02, min_return=0.005):
+    def backtest_portfolio(self, historical_returns, strategy_name='sharpe', optimal_weights=None):
         """
         Perform backtesting of the portfolio using historical data.
 
@@ -111,17 +111,18 @@ class Portfolio:
         :param min_return: Minimum return constraint.
         """
         # Step 1: Get the optimal weights based on the historical data
-        optimal_weights = self.get_optimal_weights(strategy_name, max_volatility, min_return)
+        #optimal_weights = self.get_optimal_weights(strategy_name, max_volatility, min_return)
 
         # Step 2: Create new Return and Volatility calculators with historical data and optimal weights
-        historical_return_calculator = Return(historical_returns, pd.DataFrame([optimal_weights]*historical_returns.shape[0], columns=historical_returns.columns))
-        historical_volatility_calculator = Volatility(historical_volatilities, pd.DataFrame([optimal_weights]*historical_volatilities.shape[0], columns=historical_volatilities.columns))
+        
+        historical_return_calculator = Return(historical_returns, optimal_weights)
+       
 
         # Step 3: Calculate portfolio returns for each day using the Return class
         portfolio_returns = historical_return_calculator.calculate_portfolio_returns()
 
         # Step 4: Calculate portfolio volatility for each day using the Volatility class
-        portfolio_volatility = historical_volatility_calculator.calculate_portfolio_volatility()
+        #portfolio_volatility = historical_volatility_calculator.calculate_portfolio_volatility()
 
         # Step 5: Calculate cumulative returns over the backtesting period using the Return class
         cumulative_return = historical_return_calculator.calculate_cumulative_return(portfolio_returns)
@@ -129,8 +130,9 @@ class Portfolio:
 
         # Print backtesting results
         print(f"Backtest Results - {strategy_name}")
-        print(f"Daily Portfolio Returns:\n{portfolio_returns}")
+        for portfolio_return in portfolio_returns:
+            print(f"Daily Portfolio Returns: {portfolio_return}")
         print(f"Cumulative Return: {cumulative_return:.4%}")
-        print(f"Portfolio Volatility:\n{portfolio_volatility}")
+        
 
-        return portfolio_returns, cumulative_return, portfolio_volatility
+        return portfolio_returns, cumulative_return

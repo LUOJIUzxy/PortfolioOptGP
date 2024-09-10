@@ -20,7 +20,7 @@ from Strategies.min_volatility_strategy import MinVolatilityStrategy
 
 from Portfolio.portfolio import Portfolio
 
-import numpy as np
+import pandas as pd
 import tensorflow as tf
 
 from statsmodels.tsa.arima.model import ARIMA
@@ -332,6 +332,7 @@ class MultiInputGPR:
         mse_test = mean_squared_error(Y_AAPL_full_tf, f_mean.numpy())
         print(f"Mean Squared Error Normalized: {mse_test:.4f}")
 
+        print(f"Mean: {AAPL_full_mean}, Std: {AAPL_full_std}")
         f_mean = f_mean * AAPL_full_std + AAPL_full_mean
         Y_actual = Y_AAPL_full_tf * AAPL_full_std + AAPL_full_mean
         f_cov = f_cov * AAPL_full_std ** 2
@@ -344,7 +345,7 @@ class MultiInputGPR:
         visualizer.plot_GP(X_AAPL_full_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/future_predictions_{self.ticker}.png')
 
         # Return two-day predictions
-        return [f_mean[-2:], f_cov[-2:]]
+        return [f_mean[-3:], f_cov[-3:], Y_actual[-3:]]
     
     def run_arima(self) -> None:
         
@@ -368,7 +369,7 @@ if __name__ == "__main__":
     train_start_date = '2024-02-10'
     train_end_date = '2024-05-10'
     test_start_date = '2024-05-13'
-    test_end_date = '2024-05-14'
+    test_end_date = '2024-05-15'
 
     ticker1 = 'JPM'
     ticker2 = 'AAPL'
@@ -396,8 +397,10 @@ if __name__ == "__main__":
     predicted_variances_1 = []
     predicted_values = []
     predicted_variances = []
+    predicted_Y_values_1 = [] #pandas.DatFrame()
+    predicted_Y_values = []
 
-    for to_be_predicted in [ticker1, ticker2, ticker3, ticker4, ticker5]:
+    for to_be_predicted in portolio_assets:
         print(f"Predicting {to_be_predicted}")
         multiInputGPR = MultiInputGPR(
             ticker=to_be_predicted, 
@@ -418,17 +421,21 @@ if __name__ == "__main__":
         print(predicted)
         predicted_values_1.append(predicted[0][0][0])
         predicted_variances_1.append(predicted[1][0][0])
+        predicted_Y_values_1.append(predicted[2][0][0])
+        
         # calculate cumulative returns
         predicted_values.append(predicted[0])
         predicted_variances.append(predicted[1])
+        predicted_Y_values.append(predicted[2])
  
         #multiInputGPR.run_arima()
 
+    # the length should be length of the assets
     for i in range(len(predicted_values_1)):
-        print(f"Day 1 Predicted value: {predicted_values_1[i]}, Predicted variance: {predicted_variances_1[i]}")
+        print(f"Day 1 Predicted value: {predicted_values_1[i]}, Predicted variance: {predicted_variances_1[i]}, True value: {predicted_Y_values_1[i]}")
     
     for i in range(len(predicted_values)):
-        print(f"Two Days Predicted value: {predicted_values[i]}, Predicted variance: {predicted_variances[i]}")
+        print(f"Two Days Predicted value: {predicted_values[i]}, Predicted variance: {predicted_variances[i]}, True value: {predicted_Y_values[i]}")
     
     cov = np.diag(predicted_variances_1)
     print(cov)
@@ -441,20 +448,49 @@ if __name__ == "__main__":
     max_volatility_threshold = 0.02  
     min_return_threshold = 0.005 
 
+    optimal_weights_min_volatility = []
+    optimal_weights_max_return = []
+    optimal_weights_max_sharpe = []
+
     print("########################## Portfolio for Day 1 ##########################")
+    # predicted_Y_values_df = pd.DataFrame(predicted_Y_values_1).T 
+    # predicted_Y_values_df.columns = portolio_assets
+
     portfolio1 = Portfolio(portolio_assets, predicted_values_1, predicted_variances_1, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=0, regularization=False, if_cml=False)
-    portfolio1.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio1.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio1.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-   
+    optimal_weights_max_sharpe_1 =  portfolio1.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
+    optimal_weights_max_return_1 = portfolio1.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
+    optimal_weights_min_volatility_1 = portfolio1.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
     
+    portfolio1.backtest_portfolio(historical_returns=predicted_Y_values_1, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe_1)
+    portfolio1.backtest_portfolio(historical_returns=predicted_Y_values_1, strategy_name='max_return', optimal_weights=optimal_weights_max_return_1)
+    portfolio1.backtest_portfolio(historical_returns=predicted_Y_values_1, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility_1)
+    
+
+    optimal_weights_max_return.append(optimal_weights_max_return_1)
+    optimal_weights_max_sharpe.append(optimal_weights_max_sharpe_1)
+    optimal_weights_min_volatility.append(optimal_weights_min_volatility_1)
+
     # 2. Calculate cml for the second day, and optimize the portfolio based on the cumulative returns
     print("########################## Portfolio for Day 2 ##########################")
+    predicted_Y_values_squeezed = np.squeeze(predicted_Y_values)
+
+# Transpose the array to get days as rows and tickers as columns (shape (2, 5))
+    
     portfolio2 = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=0, regularization=False, if_cml=True)
-    portfolio2.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio2.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio2.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-   
+    optimal_weights_max_sharpe_2 = portfolio2.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
+    optimal_weights_max_sharpe.append(optimal_weights_max_sharpe_2)
+    portfolio2.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe)
+    
+    optimal_weights_max_return_2 = portfolio2.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
+    optimal_weights_max_return.append(optimal_weights_max_return_2)
+    portfolio2.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return)
+    
+
+    optimal_weights_min_volatility_2 = portfolio2.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
+    optimal_weights_min_volatility.append(optimal_weights_min_volatility_2)
+    portfolio2.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility)
+    # Backtesting
+    
     
     plt.show()
 

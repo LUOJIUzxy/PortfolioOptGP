@@ -7,15 +7,24 @@ import numpy as np
 # 2. Backtesting时，使用optimized weights + true assets return
 
 class Return:
-    def __init__(self, asset_returns, weights_df):
+    def __init__(self, asset_returns, weights):
         """
         Initialize the Return class with asset returns and portfolio weights.
         
-        :param asset_returns: DataFrame of asset returns.
-        :param weights_df: DataFrame of portfolio weights, where each row is for a specific time period.
+        :param asset_returns: List or numpy array of asset returns.
+        :param weights_df: List or numpy array of portfolio weights, where each row is for a specific time period.
         """
+        asset_returns = np.array(asset_returns)
+        asset_returns = np.squeeze(asset_returns).T # (5, 2)
+        weights = np.array(weights)
+        
+        if asset_returns.shape != weights.shape:
+            print(asset_returns.shape, weights.shape)
+            raise ValueError("The shapes of asset_returns and weights must match (same number of days and assets).")
+        
         self.asset_returns = asset_returns
-        self.weights_df = weights_df
+        self.weights = weights
+
 
     def calculate_portfolio_returns(self):
         """
@@ -23,15 +32,18 @@ class Return:
         
         :return: Pandas Series of portfolio returns.
         """
+        portfolio_returns = []
         # Calculate portfolio returns for each day: weighted sum of asset returns
-        portfolio_returns = (self.asset_returns * self.weights_df).sum(axis=1)
-        return pd.Series(portfolio_returns, index=self.asset_returns.index)
+        for i in range(self.asset_returns.shape[0]):
+            portfolio_returns.append(np.sum(self.asset_returns[i] * self.weights[i]))
+        
+        return portfolio_returns
 
     '''
     Portfolio_returns来自于calculate_portfolio_returns()是一个Series 
     所以每次想要计算cml, 都需要先计算 daily portfolio_returns
     '''
-    def calculate_cumulative_return(self, portfolio_returns):
+    def calculate_cumulative_return(self, portfolio_returns=None):
         """
         Calculate the cumulative return of the portfolio over time.
         
@@ -39,8 +51,11 @@ class Return:
         :return: Cumulative return as a percentage.
         """
         # Calculate daily portfolio returns
-        portfolio_returns = self.calculate_portfolio_returns()
+        if portfolio_returns is None:
+            portfolio_returns = self.calculate_portfolio_returns()
+
+        portfolio_returns = np.array(portfolio_returns)
         
         # Calculate cumulative return using the formula (1 + r1)(1 + r2)...(1 + rn) - 1
-        cumulative_return = (1 + portfolio_returns).prod() - 1
+        cumulative_return = np.prod(1 + portfolio_returns) - 1
         return cumulative_return

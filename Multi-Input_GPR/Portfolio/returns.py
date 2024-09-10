@@ -38,6 +38,9 @@ class Return:
         :param portfolio_returns: Series of portfolio returns.
         :return: Cumulative return as a percentage.
         """
-        # Convert periodic returns to cumulative return
-        cumulative_return = np.prod(1 + portfolio_returns) - 1
+        # Calculate daily portfolio returns
+        portfolio_returns = self.calculate_portfolio_returns()
+        
+        # Calculate cumulative return using the formula (1 + r1)(1 + r2)...(1 + rn) - 1
+        cumulative_return = (1 + portfolio_returns).prod() - 1
         return cumulative_return

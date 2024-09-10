@@ -1,19 +1,25 @@
 from Strategies.strategy import Strategy
+from Optimization.optimizer import Optimizer
 
 class MaxReturnStrategy(Strategy):
     """
     Strategy to maximize portfolio returns within a volatility constraint.
     """
 
-    def optimize(self, max_volatility=None):
+    def optimize(self, optimizer: Optimizer, strategy_name, max_volatility, min_return):
         """
-        Optimize portfolio to maximize returns under a maximum volatility constraint.
+        Optimize portfolio to maximize returns given a volatility constraint.
         
-        :param max_volatility: The maximum allowable volatility for the portfolio.
+        :param optimizer: Optimizer instance for portfolio optimization.
+        :param strategy_name: The name of the strategy being applied.
+        :param max_volatility: Maximum volatility constraint.
+        :param min_return: Minimum return constraint.
+        :return: Optimal portfolio weights.
         """
-        if self.optimizer:
-            if max_volatility is None:
-                raise ValueError("max_volatility must be provided for MaxReturnStrategy.")
-            return self.optimizer.maximize_returns(max_volatility)
-        else:
-            raise ValueError("Optimizer not set.")
+        # Perform optimization to maximize return (constrained by volatility)
+        optimal_weights = optimizer.maximize_returns(max_volatility=max_volatility)
+
+        # Apply broker fee adjustments if the flag is enabled
+        optimal_weights = self.apply_broker_fee(optimal_weights)
+
+        return optimal_weights

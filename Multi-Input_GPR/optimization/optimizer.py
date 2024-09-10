@@ -7,53 +7,72 @@ class Optimizer:
     def __init__(self, lambda_=0.01):
         self.lambda_ = lambda_
         self.initial_weights = [0.2, 0.2, 0.2, 0.2, 0.2]
-        # Bounds for alpha and beta
         self.bounds = [(0, 1), (0, 1), (0, 1), (0, 1), (0, 1)]
-        self.constraints = constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
-        self.mu = None  # Predicted returns
-        self.Sigma = None  # Covariance matrix
+        self.constraints = {'type': 'eq', 'fun': lambda w: np.sum(w) - 1}
+        self.mu = None  # Predicted asset returns
+        self.Sigma = None  # Covariance matrix (variances or full covariance)
         self.r_f = None  # Risk-free rate
 
     def set_predictions(self, predicted_means, predicted_variances, r_f):
-        # Convert TensorFlow tensors to NumPy arrays
-        self.mu = np.array([mean.numpy() for mean in predicted_means])
-        variances = np.array([var.numpy() for var in predicted_variances])
+        self.mu = np.array(predicted_means)
+        self.Sigma = np.diag(np.array(predicted_variances))  
+        self.r_f = r_f
+
+    def set_predictions_cml(self, predicted_means, predicted_variances, r_f):
+        """
+        Set cumulative predictions based on asset-level returns over multiple periods.
         
-        # Constructing a diagonal covariance matrix from variances (assuming no covariance between assets)
-        self.Sigma = np.diag(variances)
-        
-        # Set the risk-free rate
+        :param asset_returns: List of lists, where each sublist is the asset returns over multiple periods.
+        :param asset_variances: List of lists, where each sublist is the asset variances over multiple periods.
+        :param r_f: Risk-free rate for Sharpe ratio calculation.
+        """
+        # Calculate cumulative returns for each asset: (1 + r1) * (1 + r2) * ... * (1 + rn) - 1
+        self.mu = np.array([np.prod([1 + r for r in asset_return_list]) - 1 for asset_return_list in predicted_means])
+
+        # Calculate cumulative variances by summing variances over multiple periods
+        cumulative_variances = [np.sum(asset_variance_list) for asset_variance_list in predicted_variances]
+        self.Sigma = np.diag(np.array(cumulative_variances))  # Diagonal covariance matrix
+
         self.r_f = r_f
     
-    def set_predictions_cml(self, predicted_returns, predicted_variances, r_f):
-        # Calculate cumulative returns for multiple time periods returns
-        # (1 + r1) * (1 + r2) * ... * (1 + rn) - 1
-        # Return an array of cumulative returns for each asset
-        self.mu = np.array([np.prod([1 + ret.numpy() for ret in asset_returns]) - 1 
-                            for asset_returns in predicted_returns])
-        variances = np.array([np.sum([var.numpy() for var in asset_variances]) 
-                              for asset_variances in predicted_variances])
-        
-        # Constructing a diagonal covariance matrix from variances (assuming no covariance between assets)
-        self.Sigma = np.diag(variances)
-        
-        # Set the risk-free rate
-        self.r_f = r_f
-    
-    # Objective function (negative Sharpe ratio)
     def objective(self, w):
+        """
+        Objective function to maximize the Sharpe ratio.
+        
+        :param w: Weights of the assets in the portfolio.
+        :return: Negative Sharpe ratio (since we are minimizing).
+        """
         if self.mu is None or self.Sigma is None or self.r_f is None:
             raise ValueError("Predictions and covariance matrix must be set before optimization.")
+        
+        # Portfolio return and volatility
         portfolio_return = np.dot(self.mu, w)
         portfolio_volatility = np.sqrt(np.dot(w.T, np.dot(self.Sigma, w)))
+        
+        # Sharpe ratio
         sharpe_ratio = (portfolio_return - self.r_f) / portfolio_volatility
-        return -sharpe_ratio
+        
+        return -sharpe_ratio  # Negative because we want to maximize it
+    
+    def optimize_portfolio(self):
+        if self.mu is None or self.Sigma is None or self.r_f is None:
+            raise ValueError("Predictions and covariance matrix must be set before optimization.")
+        result = minimize(
+            self.objective,
+            self.initial_weights,
+            bounds=self.bounds,
+            constraints=self.constraints,
+            method='SLSQP'
+        )
+        return result.x
 
     def returns_objective(self, w):
-            return -np.dot(self.mu, w)  # Negative because we are minimizing by default
+                               
+        return -np.dot(self.mu, w)  # Negative because we are minimizing by default
     
     def uncertainty_objective(self, w):
-            return np.sqrt(np.dot(w.T, np.dot(self.Sigma, w)))
+                             
+        return np.sqrt(np.dot(w.T, np.dot(self.Sigma, w)))
     
     def maximize_returns(self, max_volatility):
         volatility_constraint = {'type': 'ineq', 'fun': lambda w: max_volatility - np.sqrt(np.dot(w.T, np.dot(self.Sigma, w)))}
@@ -91,18 +110,6 @@ class Optimizer:
     def optimize_weights(self, Y_tf, f_mean_daily, f_mean_weekly, f_mean_monthly):
         result = minimize(
             lambda weights: self.loss_fn(weights, Y_tf, f_mean_daily, f_mean_weekly, f_mean_monthly),
-            self.initial_weights,
-            bounds=self.bounds,
-            constraints=self.constraints,
-            method='SLSQP'
-        )
-        return result.x
-    
-    def optimize_portfolio(self):
-        if self.mu is None or self.Sigma is None or self.r_f is None:
-            raise ValueError("Predictions and covariance matrix must be set before optimization.")
-        result = minimize(
-            self.objective,
             self.initial_weights,
             bounds=self.bounds,
             constraints=self.constraints,

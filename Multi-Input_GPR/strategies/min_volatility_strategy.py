@@ -1,19 +1,25 @@
 from Strategies.strategy import Strategy
+from Optimization.optimizer import Optimizer
 
 class MinVolatilityStrategy(Strategy):
     """
     Strategy to minimize portfolio volatility given a minimum return constraint.
     """
 
-    def optimize(self, min_return=None):
+    def optimize(self, optimizer: Optimizer, strategy_name, max_volatility, min_return):
         """
-        Optimize portfolio to minimize volatility under a minimum return constraint.
+        Optimize portfolio to maximize returns given a volatility constraint.
         
-        :param min_return: The minimum required return for the portfolio.
+        :param optimizer: Optimizer instance for portfolio optimization.
+        :param strategy_name: The name of the strategy being applied.
+        :param max_volatility: Maximum volatility constraint.
+        :param min_return: Minimum return constraint.
+        :return: Optimal portfolio weights.
         """
-        if self.optimizer:
-            if min_return is None:
-                raise ValueError("min_return must be provided for MinVolatilityStrategy.")
-            return self.optimizer.minimize_uncertainty(min_return)
-        else:
-            raise ValueError("Optimizer not set.")
+        # Perform optimization to maximize return (constrained by volatility)
+        optimal_weights = optimizer.minimize_uncertainty(min_return=min_return)
+
+        # Apply broker fee adjustments if the flag is enabled
+        optimal_weights = self.apply_broker_fee(optimal_weights)
+
+        return optimal_weights

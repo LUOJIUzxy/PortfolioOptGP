@@ -421,7 +421,9 @@ if __name__ == "__main__":
         predicted_values.append(predicted[0])
         predicted_variances.append(predicted[1])
         predicted_Y_values.append(predicted[2])
- 
+    
+    
+    
         #multiInputGPR.run_arima()   
      
     optimizer = Optimizer(lambda_l1=0.00, lambda_l2=0.00)
@@ -439,7 +441,7 @@ if __name__ == "__main__":
     
 
     # if_cml = True, means there're multiple days of predictions
-    portfolio2 = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=0, regularization=False, if_cml=True)
+    portfolio2 = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=0.00001, regularization=False, if_cml=True)
     optimal_weights_max_sharpe = portfolio2.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
 
     

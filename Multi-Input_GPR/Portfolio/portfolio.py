@@ -141,7 +141,7 @@ class Portfolio:
 
         # Step 2: Create new Return and Volatility calculators with historical data and optimal weights
         
-        historical_return_calculator = Return(historical_returns, optimal_weights)
+        historical_return_calculator = Return(historical_returns, optimal_weights, transaction_cost_rate=self.broker_fee)
        
 
         # Step 3: Calculate portfolio returns for each day using the Return class

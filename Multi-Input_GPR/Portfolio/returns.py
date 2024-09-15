@@ -7,7 +7,7 @@ import numpy as np
 # 2. Backtesting时，使用optimized weights + true assets return
 
 class Return:
-    def __init__(self, asset_returns, weights):
+    def __init__(self, asset_returns, weights, transaction_cost_rate=0):
         """
         Initialize the Return class with asset returns and portfolio weights.
         
@@ -24,6 +24,7 @@ class Return:
         
         self.asset_returns = asset_returns
         self.weights = weights
+        self.transaction_cost_rate = transaction_cost_rate
 
 
     def calculate_portfolio_returns(self):
@@ -35,7 +36,11 @@ class Return:
         portfolio_returns = []
         # Calculate portfolio returns for each day: weighted sum of asset returns
         for i in range(self.asset_returns.shape[0]):
-            portfolio_returns.append(np.sum(self.asset_returns[i] * self.weights[i]))
+            if i == 0:
+                portfolio_returns.append(np.sum(self.asset_returns[i] * self.weights[i]))
+                continue
+            broker_fee = self.transaction_cost_rate * np.sum(np.abs(self.weights[i] - self.weights[i-1]))
+            portfolio_returns.append(np.sum(self.asset_returns[i] * self.weights[i]) - broker_fee)
         
         return portfolio_returns
 

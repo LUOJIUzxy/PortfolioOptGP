@@ -452,42 +452,21 @@ if __name__ == "__main__":
     optimal_weights_max_return = []
     optimal_weights_max_sharpe = []
 
-    print("########################## Portfolio for Day 1 ##########################")
-    # predicted_Y_values_df = pd.DataFrame(predicted_Y_values_1).T 
-    # predicted_Y_values_df.columns = portolio_assets
-
-    portfolio1 = Portfolio(portolio_assets, predicted_values_1, predicted_variances_1, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=0, regularization=False, if_cml=False)
-    optimal_weights_max_sharpe_1 =  portfolio1.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    optimal_weights_max_return_1 = portfolio1.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    optimal_weights_min_volatility_1 = portfolio1.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    
-    portfolio1.backtest_portfolio(historical_returns=predicted_Y_values_1, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe_1)
-    portfolio1.backtest_portfolio(historical_returns=predicted_Y_values_1, strategy_name='max_return', optimal_weights=optimal_weights_max_return_1)
-    portfolio1.backtest_portfolio(historical_returns=predicted_Y_values_1, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility_1)
+    print("########################## Portfolio for 3 Days  ##########################")
     
 
-    optimal_weights_max_return.append(optimal_weights_max_return_1)
-    optimal_weights_max_sharpe.append(optimal_weights_max_sharpe_1)
-    optimal_weights_min_volatility.append(optimal_weights_min_volatility_1)
-
-    # 2. Calculate cml for the second day, and optimize the portfolio based on the cumulative returns
-    print("########################## Portfolio for Day 2 ##########################")
-    predicted_Y_values_squeezed = np.squeeze(predicted_Y_values)
-
-# Transpose the array to get days as rows and tickers as columns (shape (2, 5))
-    
+    # if_cml = True, means there're multiple days of predictions
     portfolio2 = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=0, regularization=False, if_cml=True)
-    optimal_weights_max_sharpe_2 = portfolio2.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    optimal_weights_max_sharpe.append(optimal_weights_max_sharpe_2)
+    optimal_weights_max_sharpe = portfolio2.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
+
+    
     portfolio2.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe)
     
-    optimal_weights_max_return_2 = portfolio2.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    optimal_weights_max_return.append(optimal_weights_max_return_2)
+    optimal_weights_max_return = portfolio2.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
     portfolio2.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return)
     
 
-    optimal_weights_min_volatility_2 = portfolio2.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    optimal_weights_min_volatility.append(optimal_weights_min_volatility_2)
+    optimal_weights_min_volatility = portfolio2.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
     portfolio2.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility)
     # Backtesting
     

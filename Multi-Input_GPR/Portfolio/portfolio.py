@@ -86,6 +86,7 @@ class Portfolio:
 
         return optimal_weights
 
+
     def calculate_performance(self, weights):
         """Calculate portfolio return and volatility for given weights."""
         return self.optimizer.calculate_portfolio_performance(weights)
@@ -121,13 +122,6 @@ class Portfolio:
             print(f"Day {(day+1)}: Predicted Portfolio Return (Cumulative): {portfolio_return:.4%}, Predicted Portfolio volatility: {portfolio_volatility:.4%}")
 
             optimal_weights.append(optimal_weights_daily)
-        # self.set_returns()
-        # optimal_weights = self.get_optimal_weights(strategy_name, max_volatility, min_return)
-        
-        # portfolio_return, portfolio_volatility = self.calculate_performance(optimal_weights)
-
-        # print(f"Optimal weights ({strategy_name}): {optimal_weights}")
-        # print(f"Portfolio return: {portfolio_return:.4f}, Portfolio volatility: {portfolio_volatility:.4f}")
         
         # shape of optimal_weights: (5, 5) -> 5 days, 5 assets
         return optimal_weights

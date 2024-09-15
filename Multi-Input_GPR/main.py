@@ -345,7 +345,7 @@ class MultiInputGPR:
         visualizer.plot_GP(X_AAPL_full_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/future_predictions_{self.ticker}.png')
 
         # Return two-day predictions
-        return [f_mean[-3:], f_cov[-3:], Y_actual[-3:]]
+        return [f_mean[-5:], f_cov[-5:], Y_actual[-5:]]
     
     def run_arima(self) -> None:
         
@@ -356,7 +356,7 @@ class MultiInputGPR:
         model_fit = model.fit()
 
         # Make predictions
-        forecast = model_fit.forecast(steps=1)
+        forecast = model_fit.forecast(steps=5)
 
         # Print the forecasted values
         print(forecast)
@@ -369,7 +369,7 @@ if __name__ == "__main__":
     train_start_date = '2024-02-10'
     train_end_date = '2024-05-10'
     test_start_date = '2024-05-13'
-    test_end_date = '2024-05-15'
+    test_end_date = '2024-05-17'
 
     ticker1 = 'JPM'
     ticker2 = 'AAPL'
@@ -393,11 +393,8 @@ if __name__ == "__main__":
         
     ]
 
-    predicted_values_1 = []
-    predicted_variances_1 = []
     predicted_values = []
     predicted_variances = []
-    predicted_Y_values_1 = [] #pandas.DatFrame()
     predicted_Y_values = []
 
     for to_be_predicted in portolio_assets:
@@ -419,27 +416,15 @@ if __name__ == "__main__":
         )
         predicted = multiInputGPR.run_step_3()
         print(predicted)
-        predicted_values_1.append(predicted[0][0][0])
-        predicted_variances_1.append(predicted[1][0][0])
-        predicted_Y_values_1.append(predicted[2][0][0])
         
         # calculate cumulative returns
         predicted_values.append(predicted[0])
         predicted_variances.append(predicted[1])
         predicted_Y_values.append(predicted[2])
  
-        #multiInputGPR.run_arima()
-
-    # the length should be length of the assets
-    for i in range(len(predicted_values_1)):
-        print(f"Day 1 Predicted value: {predicted_values_1[i]}, Predicted variance: {predicted_variances_1[i]}, True value: {predicted_Y_values_1[i]}")
-    
-    for i in range(len(predicted_values)):
-        print(f"Two Days Predicted value: {predicted_values[i]}, Predicted variance: {predicted_variances[i]}, True value: {predicted_Y_values[i]}")
-    
-    cov = np.diag(predicted_variances_1)
-    print(cov)
-    optimizer = Optimizer(lambda_=0.01)
+        #multiInputGPR.run_arima()   
+     
+    optimizer = Optimizer(lambda_l1=0.00, lambda_l2=0.00)
     
 
     # Risk-free rate (daily)
@@ -451,8 +436,6 @@ if __name__ == "__main__":
     optimal_weights_min_volatility = []
     optimal_weights_max_return = []
     optimal_weights_max_sharpe = []
-
-    print("########################## Portfolio for 3 Days  ##########################")
     
 
     # if_cml = True, means there're multiple days of predictions

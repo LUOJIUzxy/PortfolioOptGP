@@ -29,20 +29,40 @@ class Return:
 
     def calculate_portfolio_returns(self):
         """
-        Calculate portfolio returns based on time-varying weights.
+        Calculate real portfolio returns based on time-varying weights for backtesting.
         
-        :return: Pandas Series of portfolio returns.
+        :return: List of portfolio returns with length of days.
         """
         portfolio_returns = []
-        # Calculate portfolio returns for each day: weighted sum of asset returns
+        transaction_costs = []
+        previous_weights = np.zeros_like(self.weights[0])  # Assuming starting with no position
+
         for i in range(self.asset_returns.shape[0]):
+            current_weights = self.weights[i]
+            daily_return = np.dot(current_weights, self.asset_returns[i])
+            
             if i == 0:
-                portfolio_returns.append(np.sum(self.asset_returns[i] * self.weights[i]))
-                continue
-            broker_fee = self.transaction_cost_rate * np.sum(np.abs(self.weights[i] - self.weights[i-1]))
-            portfolio_returns.append(np.sum(self.asset_returns[i] * self.weights[i]) - broker_fee)
+                # Assuming initial allocation from zero; calculate transaction costs accordingly
+                trx_cost = self.transaction_cost_rate * np.sum(np.abs(current_weights))
+            else:
+                # Transaction costs based on changes from previous weights
+                weight_change = np.abs(current_weights - previous_weights)
+                trx_cost = self.transaction_cost_rate * np.sum(weight_change)
+            
+            # Net return after subtracting transaction costs
+            net_return = daily_return - trx_cost
+            
+            # Append to lists
+            portfolio_returns.append(net_return)
+            transaction_costs.append(trx_cost)
+            
+            # Update previous_weights for next iteration
+            previous_weights = current_weights
+
+            # Debugging statements (optional, can be removed in production)
+            # print(f"Day {i+1}: Gross Return = {daily_return:.4%}, Transaction Cost = {trx_cost:.6f}, Net Return = {net_return:.4%}")
         
-        return portfolio_returns
+        return portfolio_returns, transaction_costs
 
     '''
     Portfolio_returns来自于calculate_portfolio_returns()是一个Series 
@@ -57,10 +77,45 @@ class Return:
         """
         # Calculate daily portfolio returns
         if portfolio_returns is None:
-            portfolio_returns = self.calculate_portfolio_returns()
+            portfolio_returns, _ = self.calculate_portfolio_returns()
 
         portfolio_returns = np.array(portfolio_returns)
         
         # Calculate cumulative return using the formula (1 + r1)(1 + r2)...(1 + rn) - 1
         cumulative_return = np.prod(1 + portfolio_returns) - 1
         return cumulative_return
+
+    def calculate_cumulative_transaction_costs(self, transaction_costs=None):
+        """
+        Calculate cumulative transaction costs over time.
+        
+        :param transaction_costs: List or array of daily transaction costs. If None, calculates it.
+        :return: Cumulative transaction costs as a float.
+        """
+        if transaction_costs is None:
+            _, transaction_costs = self.calculate_portfolio_returns()
+        
+        cumulative_trx_costs = np.sum(transaction_costs)
+        return cumulative_trx_costs
+    
+    def get_daily_transaction_costs(self, transaction_costs=None):
+        """
+        Get the daily transaction costs.
+        
+        :param transaction_costs: List or array of daily transaction costs. If None, calculates it.
+        :return: Numpy array of daily transaction costs.
+        """
+        if transaction_costs is None:
+            _, transaction_costs = self.calculate_portfolio_returns()
+        return np.array(transaction_costs)
+
+    def get_daily_portfolio_returns(self, portfolio_returns=None):
+        """
+        Get the daily net portfolio returns.
+        
+        :param portfolio_returns: List or array of daily portfolio returns. If None, calculates it.
+        :return: Numpy array of daily portfolio returns.
+        """
+        if portfolio_returns is None:
+            portfolio_returns, _ = self.calculate_portfolio_returns()
+        return np.array(portfolio_returns)

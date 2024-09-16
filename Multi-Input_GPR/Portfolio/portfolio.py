@@ -31,7 +31,7 @@ class Portfolio:
         self.regularization = regularization
 
         self.returns = asset_returns
-        self.variances = predicted_volatilities
+        self.variances = predicted_volatilities  # Initialize previous weights
 
         self.if_cml = if_cml
 
@@ -42,14 +42,6 @@ class Portfolio:
             'min_volatility': MinVolatilityStrategy
         }
 
-    """Set the predicted returns and variances for optimization."""
-    def set_returns(self):
-        # self.returns = returns
-        # self.variances = variances
-        if self.if_cml:
-            # 针对从第二天开始的每日daily return ，计算更新cumulative return for each day，用于 predictions
-            self.optimizer.set_predictions_cml(self.returns, self.variances, self.risk_free_rate)
-        else: self.optimizer.set_predictions(self.returns, self.variances, self.risk_free_rate)
 
     def select_strategy(self, strategy_name):
         """
@@ -98,6 +90,7 @@ class Portfolio:
         for day in range(0, len(self.returns[0])):
             returns = []
             volatilities = []
+            
             # Update the optimizer with the current day's returns, update cumulative returns for each day
             if day == 0:
                 for i in range(len(self.returns)):
@@ -106,21 +99,25 @@ class Portfolio:
                 self.optimizer.set_predictions(returns, volatilities, self.risk_free_rate)
                 
             else:
+                # Loop over every asset, and get the returns and volatilities for the current day
                 for i in range(len(self.returns)):
                     returns.append(self.returns[i][:(day+1)])
                     volatilities.append(self.variances[i][:(day+1)])
 
                 self.optimizer.set_predictions_cml(returns, volatilities, self.risk_free_rate)
-            
+
             # Get the optimal weights for the current day
             optimal_weights_daily = self.get_optimal_weights(strategy_name, max_volatility, min_return)
 
+            #self.optimizer.set_previous_weights(optimal_weights_daily)
+            
             # Calculate the portfolio return and volatility for the current day
             portfolio_return, portfolio_volatility = self.calculate_performance(optimal_weights_daily)
 
             print(f"Day {(day+1)}: Optimal weights ({strategy_name}): {optimal_weights_daily}")
             print(f"Day {(day+1)}: Predicted Portfolio Return (Cumulative): {portfolio_return:.4%}, Predicted Portfolio volatility: {portfolio_volatility:.4%}")
 
+            
             optimal_weights.append(optimal_weights_daily)
         
         # shape of optimal_weights: (5, 5) -> 5 days, 5 assets
@@ -136,26 +133,31 @@ class Portfolio:
         :param max_volatility: Maximum volatility constraint.
         :param min_return: Minimum return constraint.
         """
-        # Step 1: Get the optimal weights based on the historical data
-        #optimal_weights = self.get_optimal_weights(strategy_name, max_volatility, min_return)
-
+         # Print backtesting results
+        print(f" ============================================== Backtest Results: {strategy_name} =========================================================== ")
+       
         # Step 2: Create new Return and Volatility calculators with historical data and optimal weights
         
         historical_return_calculator = Return(historical_returns, optimal_weights, transaction_cost_rate=self.broker_fee)
        
 
         # Step 3: Calculate portfolio returns for each day using the Return class
-        portfolio_returns = historical_return_calculator.calculate_portfolio_returns()
+        portfolio_returns, transaction_costs = historical_return_calculator.calculate_portfolio_returns()
 
         # Step 4: Calculate portfolio volatility for each day using the Volatility class
         #portfolio_volatility = historical_volatility_calculator.calculate_portfolio_volatility()
 
+        # Display daily returns and transaction costs
+        for i, (ret, trx) in enumerate(zip(portfolio_returns, transaction_costs)):
+            print(f"Day {i+1}: Net Return = {ret:.4%}, Transaction Cost = {trx:.6%}")
+
         # Step 5: Calculate cumulative returns over the backtesting period using the Return class
         cumulative_return = historical_return_calculator.calculate_cumulative_return(portfolio_returns)
-        #cumulative_return = np.prod(1 + portfolio_returns) - 1
+        
+        cumulative_trx_costs = historical_return_calculator.calculate_cumulative_transaction_costs()
+        print(f"Cumulative Transaction Costs (based on changes in weights): {cumulative_trx_costs:.6%}")
 
-        # Print backtesting results
-        print(f" ============================================== Backtest Results: {strategy_name} =========================================================== ")
+
         for i in range(len(portfolio_returns)):
             print(f"Day {(i+1)}: Daily Portfolio Return: {portfolio_returns[i]}")
 

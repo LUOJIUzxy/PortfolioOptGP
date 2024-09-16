@@ -23,7 +23,7 @@ class SharpeRatioStrategy(Strategy):
         optimal_weights = optimizer.optimize_portfolio()
 
         # Apply broker fee adjustments
-        optimal_weights = self.apply_broker_fee(optimal_weights)
+        #optimal_weights = self.apply_broker_fee(optimal_weights)
 
         return optimal_weights
 

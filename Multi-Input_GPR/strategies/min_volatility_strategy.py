@@ -20,6 +20,6 @@ class MinVolatilityStrategy(Strategy):
         optimal_weights = optimizer.minimize_uncertainty(min_return=min_return)
 
         # Apply broker fee adjustments if the flag is enabled
-        optimal_weights = self.apply_broker_fee(optimal_weights)
+        #optimal_weights = self.apply_broker_fee(optimal_weights)
 
         return optimal_weights

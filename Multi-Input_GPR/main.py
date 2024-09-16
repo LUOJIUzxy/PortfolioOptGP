@@ -415,16 +415,15 @@ if __name__ == "__main__":
             isFixedLikelihood=False
         )
         predicted = multiInputGPR.run_step_3()
-        print(predicted)
         
         # calculate cumulative returns
         predicted_values.append(predicted[0])
         predicted_variances.append(predicted[1])
         predicted_Y_values.append(predicted[2])
     
+    for to_be_predicted in portolio_assets:
     
-    
-        #multiInputGPR.run_arima()   
+        multiInputGPR.run_arima()   
      
     optimizer = Optimizer(lambda_l1=0.00, lambda_l2=0.00)
     
@@ -441,18 +440,18 @@ if __name__ == "__main__":
     
 
     # if_cml = True, means there're multiple days of predictions
-    portfolio2 = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=0.00001, regularization=False, if_cml=True)
-    optimal_weights_max_sharpe = portfolio2.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
+    portfolio = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=0.00001, regularization=False, if_cml=True)
+    optimal_weights_max_sharpe = portfolio.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
 
     
-    portfolio2.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe)
+    portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe)
     
-    optimal_weights_max_return = portfolio2.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio2.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return)
+    optimal_weights_max_return = portfolio.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
+    portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return)
     
 
-    optimal_weights_min_volatility = portfolio2.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio2.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility)
+    optimal_weights_min_volatility = portfolio.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
+    portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility)
     # Backtesting
     
     

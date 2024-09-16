@@ -20,6 +20,6 @@ class MaxReturnStrategy(Strategy):
         optimal_weights = optimizer.maximize_returns(max_volatility=max_volatility)
 
         # Apply broker fee adjustments if the flag is enabled
-        optimal_weights = self.apply_broker_fee(optimal_weights)
+        #optimal_weights = self.apply_broker_fee(optimal_weights)
 
         return optimal_weights

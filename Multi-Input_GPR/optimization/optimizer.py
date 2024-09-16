@@ -4,15 +4,17 @@ import numpy as np
 import pandas as pd
 
 class Optimizer:
-    def __init__(self, lambda_l1=0.00, lambda_l2=0.00):
+    def __init__(self, lambda_l1=0.00, lambda_l2=0.00, trx_fee=0.0005):
         self.lambda_l1 = lambda_l1
         self.lambda_l2 = lambda_l2
+        self.lambda_tx = trx_fee
         self.initial_weights = [0.2, 0.2, 0.2, 0.2, 0.2]
         self.bounds = [(0, 1), (0, 1), (0, 1), (0, 1), (0, 1)]
         self.constraints = {'type': 'eq', 'fun': lambda w: np.sum(w) - 1}
         self.mu = None  # Predicted asset returns
         self.Sigma = None  # Covariance matrix (variances or full covariance)
         self.r_f = None  # Risk-free rate
+        self.previous_weights = self.initial_weights  # Initialize previous weights
 
     def set_predictions(self, predicted_means, predicted_variances, r_f):
         self.mu = np.array(predicted_means)
@@ -35,6 +37,15 @@ class Optimizer:
         self.Sigma = np.diag(np.array(cumulative_variances))  # Diagonal covariance matrix
 
         self.r_f = r_f
+
+    """Set the previous predicted returns for calculate broker fees."""
+    def set_previous_weights(self, previous_weights):
+        """
+        Set the previous portfolio weights.
+
+        :param previous_weights: Numpy array of previous weights.
+        """
+        self.previous_weights = np.array(previous_weights)
     
     def regularization(self, w):
         """
@@ -49,6 +60,32 @@ class Optimizer:
         if self.lambda_l2 > 0:
             residual += self.lambda_l2 * np.sum(w ** 2)
         return residual
+    
+    def transaction_cost_penalty(self, w):
+        """
+        Compute the transaction cost penalty based on the change in weights.
+
+        :param w: Current portfolio weights.
+        :return: Transaction cost penalty.
+        """
+        # Calculate the sum of absolute changes in weights
+        # What is the type of w?
+        weight_changes = np.abs(w - self.previous_weights)
+        
+        penalty = self.lambda_tx * np.sum(weight_changes)
+        return penalty
+
+    def total_penalty(self, w):
+        """
+        Compute the total penalty (regularization + transaction costs).
+
+        :param w: Portfolio weights.
+        :return: Total penalty.
+        """
+        reg_penalty = self.regularization(w)
+        tx_penalty = self.transaction_cost_penalty(w)
+        #print(f"Regularization penalty: {reg_penalty:.6f}, Transaction cost penalty: {tx_penalty:.6f}")
+        return reg_penalty + tx_penalty
     
     def objective(self, w):
         """
@@ -67,9 +104,11 @@ class Optimizer:
         # Sharpe ratio
         sharpe_ratio = (portfolio_return - self.r_f) / portfolio_volatility
 
-        #  regularization term
-        #l1_regularization = self.lambda_ * np.sum(np.abs(w))
-        regularization = self.regularization(w)
+        # regularization term
+        # Only L1/L2 regularization
+        #regularization = self.regularization(w)
+        # L1/L2 regularization + transaction costs
+        regularization = self.total_penalty(w)
         
         return -sharpe_ratio + regularization # Negative because we want to maximize it
     
@@ -83,18 +122,34 @@ class Optimizer:
             constraints=self.constraints,
             method='SLSQP'
         )
-        return result.x
+        if not result.success:
+            raise ValueError(f"Optimization failed: {result.message}")
+        
+        optimized_weights = result.x
+        # Update previous_weights for next optimization
+        self.set_previous_weights(optimized_weights)
+        return optimized_weights
 
     # for maximizing returns
     def returns_objective(self, w):
         portfolio_return = np.dot(self.mu, w)
-        regulization = self.regularization(w)
+        
+        # Only L1/L2 regularization
+        #regulization = self.regularization(w)
+
+        # L1/L2 regularization + transaction costs
+        regulization = self.total_penalty(w)
+        
         return -portfolio_return + regulization  # Negative because we are minimizing by default, but we want to maximize returns
     
     # for minimizing uncertainty
     def uncertainty_objective(self, w):
         portfolio_volatility = np.sqrt(np.dot(w.T, np.dot(self.Sigma, w)))
-        regulization = self.regularization(w)
+        # Only L1/L2 regularization
+        #regulization = self.regularization(w)
+
+        # L1/L2 regularization + transaction costs
+        regulization = self.total_penalty(w)
         return portfolio_volatility + regulization
     
     def maximize_returns(self, max_volatility):
@@ -108,7 +163,13 @@ class Optimizer:
             constraints=constraints,
             method='SLSQP'
         )
-        return result.x
+        if not result.success:
+            raise ValueError(f"Optimization failed: {result.message}")
+        
+        optimized_weights = result.x
+        # Update previous_weights for next optimization
+        self.set_previous_weights(optimized_weights)
+        return optimized_weights
 
     def minimize_uncertainty(self, min_return):
         return_constraint = {'type': 'ineq', 'fun': lambda w: np.dot(self.mu, w) - min_return}
@@ -121,7 +182,13 @@ class Optimizer:
             constraints=constraints,
             method='SLSQP'
         )
-        return result.x
+        if not result.success:
+            raise ValueError(f"Optimization failed: {result.message}")
+        
+        optimized_weights = result.x
+        # Update previous_weights for next optimization
+        self.set_previous_weights(optimized_weights)
+        return optimized_weights
 
     def loss_fn(self, weights, Y, f_mean_daily, f_mean_weekly, f_mean_monthly):
         alpha, beta = weights

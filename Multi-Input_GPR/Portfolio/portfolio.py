@@ -10,7 +10,7 @@ from Portfolio.returns import Return
 from Portfolio.volatilities import Volatility
 
 class Portfolio:
-    def __init__(self, assets, asset_returns, predicted_volatilities, optimizer, risk_free_rate=0.01/252, lambda_=0.01, broker_fee=0, regularization=False, if_cml=False):
+    def __init__(self, assets, asset_returns, predicted_volatilities, optimizer, risk_free_rate=0.01/252, lambda_=0.01, broker_fee=0, if_cml=False):
         """
         Initialize the Portfolio with a list of assets, optimizer, strategy, and optional parameters for fees and regularization.
         
@@ -28,7 +28,7 @@ class Portfolio:
         self.risk_free_rate = risk_free_rate
         self.lambda_ = lambda_
         self.broker_fee = broker_fee
-        self.regularization = regularization
+
 
         self.returns = asset_returns
         self.variances = predicted_volatilities  # Initialize previous weights
@@ -67,8 +67,6 @@ class Portfolio:
         :param min_return: Minimum return constraint.
         :return: Optimal portfolio weights.
         """
-        if self.regularization:
-            self.optimizer.lambda_ = self.lambda_  # Apply regularization if required
 
         # Select the appropriate strategy based on the strategy name
         strategy = self.select_strategy(strategy_name)
@@ -87,6 +85,7 @@ class Portfolio:
         """Evaluate the portfolio using the selected strategy and calculate performance."""
         print(f" ============================================== Predicted Results: {strategy_name} =========================================================== ")
         optimal_weights = []
+        predicted_volatilities = []
         for day in range(0, len(self.returns[0])):
             returns = []
             volatilities = []
@@ -117,13 +116,13 @@ class Portfolio:
             print(f"Day {(day+1)}: Optimal weights ({strategy_name}): {optimal_weights_daily}")
             print(f"Day {(day+1)}: Predicted Portfolio Return (Cumulative): {portfolio_return:.4%}, Predicted Portfolio volatility: {portfolio_volatility:.4%}")
 
-            
             optimal_weights.append(optimal_weights_daily)
+            predicted_volatilities.append(portfolio_volatility)
         
-        # shape of optimal_weights: (5, 5) -> 5 days, 5 assets
-        return optimal_weights
+        # shape of optimal_weights: (5, 5) -> 5 days, 5 assets, [ [day 1 weights], [day 2 weights], ...]
+        return optimal_weights, predicted_volatilities
 
-    def backtest_portfolio(self, historical_returns, strategy_name='sharpe', optimal_weights=None):
+    def backtest_portfolio(self, historical_returns, strategy_name='sharpe', optimal_weights=None, predicted_volatilities=None):
         """
         Perform backtesting of the portfolio using historical data.
 
@@ -146,22 +145,30 @@ class Portfolio:
 
         # Step 4: Calculate portfolio volatility for each day using the Volatility class
         #portfolio_volatility = historical_volatility_calculator.calculate_portfolio_volatility()
+        
+        # portfolio_variances = [np.sum(np.square(asset_variance_list)) for asset_variance_list in predicted_volatilities]
+        # diag = np.diag(np.array(portfolio_variances))  # Diagonal covariance matrix
+        
+
 
         # Display daily returns and transaction costs
-        for i, (ret, trx) in enumerate(zip(portfolio_returns, transaction_costs)):
-            print(f"Day {i+1}: Net Return = {ret:.4%}, Transaction Cost = {trx:.6%}")
+        for i, (ret, trx, vars) in enumerate(zip(portfolio_returns, transaction_costs, predicted_volatilities)):
+            daily_sharpe = (ret - self.risk_free_rate) / vars
+            print(f"Day {i+1}: Daily Portfolio Net Return = {ret:.4%}, Transaction Cost = {trx:.6%}, Portfolio Variance = {vars:.6%}, Daily Sharpe Ratio = {daily_sharpe:.6%}")
 
         # Step 5: Calculate cumulative returns over the backtesting period using the Return class
         cumulative_return = historical_return_calculator.calculate_cumulative_return(portfolio_returns)
+        print(f"Cumulative Return: {cumulative_return:.4%}")
         
         cumulative_trx_costs = historical_return_calculator.calculate_cumulative_transaction_costs()
         print(f"Cumulative Transaction Costs (based on changes in weights): {cumulative_trx_costs:.6%}")
 
+        cumulative_variance = np.sum(predicted_volatilities)
+        print(f"Cumulative Portfolio Variance: {cumulative_variance:.6%}")
 
-        for i in range(len(portfolio_returns)):
-            print(f"Day {(i+1)}: Daily Portfolio Return: {portfolio_returns[i]}")
+        # Step 6: Calculate the Sharpe ratio for the portfolio
+        sharpe_ratio = (cumulative_return - self.risk_free_rate) / cumulative_variance
+        print(f"Sharpe Ratio: {sharpe_ratio:.6f}")
 
-        print(f"Cumulative Return: {cumulative_return:.4%}")
         
-
         return portfolio_returns, cumulative_return

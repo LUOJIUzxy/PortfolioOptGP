@@ -103,3 +103,15 @@ class Visualizer:
         plt.grid(True)
         plt.savefig(filename)
         plt.close()
+
+    def plot_backtest_results(self, portfolio_returns, transaction_costs, title, filename):
+        plt.figure(figsize=(12, 6))
+        plt.plot(portfolio_returns, label="Portfolio Returns")
+        plt.plot(transaction_costs, label="Transaction Costs")
+        plt.xlabel('Day')
+        plt.ylabel('Returns')
+        plt.title(title)
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(filename)
+        plt.close()

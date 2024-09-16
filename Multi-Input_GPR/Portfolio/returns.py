@@ -98,6 +98,19 @@ class Return:
         cumulative_trx_costs = np.sum(transaction_costs)
         return cumulative_trx_costs
     
+    def calculate_cumulative_volatilities(self, portfolio_volatilities=None):
+        """
+        Calculate cumulative transaction costs over time.
+        
+        :param transaction_costs: List or array of daily transaction costs. If None, calculates it.
+        :return: Cumulative transaction costs as a float.
+        """
+        # if portfolio_volatilities is None:
+        #     _, portfolio_volatilities = self.calculate_portfolio_returns()
+        
+        cumulative_volatilities = np.sum(portfolio_volatilities)
+        return cumulative_volatilities
+    
     def get_daily_transaction_costs(self, transaction_costs=None):
         """
         Get the daily transaction costs.

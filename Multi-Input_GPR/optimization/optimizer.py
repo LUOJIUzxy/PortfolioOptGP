@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 class Optimizer:
-    def __init__(self, lambda_l1=0.00, lambda_l2=0.00, trx_fee=0.0005):
+    def __init__(self, lambda_l1=0.00, lambda_l2=0.00, trx_fee=0.0005, if_tx_penalty=True):
         self.lambda_l1 = lambda_l1
         self.lambda_l2 = lambda_l2
         self.lambda_tx = trx_fee
@@ -15,10 +15,11 @@ class Optimizer:
         self.Sigma = None  # Covariance matrix (variances or full covariance)
         self.r_f = None  # Risk-free rate
         self.previous_weights = self.initial_weights  # Initialize previous weights
+        self.if_tx_penalty = if_tx_penalty
 
     def set_predictions(self, predicted_means, predicted_variances, r_f):
         self.mu = np.array(predicted_means)
-        self.Sigma = np.diag(np.array(predicted_variances))  
+        self.Sigma = np.diag(np.array(predicted_variances))  # Assume there's no covariance between assets, covariance matrix is diagonal, for a single day
         self.r_f = r_f
 
     def set_predictions_cml(self, predicted_means, predicted_variances, r_f):
@@ -83,8 +84,12 @@ class Optimizer:
         :return: Total penalty.
         """
         reg_penalty = self.regularization(w)
-        tx_penalty = self.transaction_cost_penalty(w)
-        #print(f"Regularization penalty: {reg_penalty:.6f}, Transaction cost penalty: {tx_penalty:.6f}")
+
+        if self.if_tx_penalty:
+            tx_penalty = self.transaction_cost_penalty(w)
+        else:    
+            tx_penalty = 0.0
+
         return reg_penalty + tx_penalty
     
     def objective(self, w):

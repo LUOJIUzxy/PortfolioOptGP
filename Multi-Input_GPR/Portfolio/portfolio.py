@@ -149,12 +149,13 @@ class Portfolio:
         # portfolio_variances = [np.sum(np.square(asset_variance_list)) for asset_variance_list in predicted_volatilities]
         # diag = np.diag(np.array(portfolio_variances))  # Diagonal covariance matrix
         
-
+        sharpe_ratios = []
 
         # Display daily returns and transaction costs
         for i, (ret, trx, vars) in enumerate(zip(portfolio_returns, transaction_costs, predicted_volatilities)):
             daily_sharpe = (ret - self.risk_free_rate) / vars
-            print(f"Day {i+1}: Daily Portfolio Net Return = {ret:.4%}, Transaction Cost = {trx:.6%}, Portfolio Variance = {vars:.6%}, Daily Sharpe Ratio = {daily_sharpe:.6%}")
+            sharpe_ratios.append(daily_sharpe)
+            print(f"Day {i+1}: Daily Portfolio Net Return = {ret:.4%}, Transaction Cost = {trx:.6%}, Portfolio Variance = {vars:.6%}, Daily Sharpe Ratio = {daily_sharpe:.4f}")
 
         # Step 5: Calculate cumulative returns over the backtesting period using the Return class
         cumulative_return = historical_return_calculator.calculate_cumulative_return(portfolio_returns)
@@ -171,4 +172,4 @@ class Portfolio:
         print(f"Sharpe Ratio: {sharpe_ratio:.6f}")
 
         
-        return portfolio_returns, cumulative_return
+        return portfolio_returns, transaction_costs, sharpe_ratio

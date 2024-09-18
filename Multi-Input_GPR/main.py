@@ -445,14 +445,16 @@ if __name__ == "__main__":
     portfolio = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=broker_fee, if_cml=True)
     
     optimal_weights_max_sharpe, volatilities_max_sharpe = portfolio.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe, predicted_volatilities=volatilities_max_sharpe)
-    
+    portfolio_returns_sharpe, transaction_costs_sharpe, sharpe_ratio_sharpe = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe, predicted_volatilities=volatilities_max_sharpe)
+    multiInputGPR.visualizer.plot_backtest_results(portfolio_returns_sharpe, transaction_costs_sharpe, sharpe_ratio_sharpe, "Sharpe Ratio", "../plots/multi-input/sharpe_ratio.png")
+
     optimal_weights_max_return, volatilities_max_return = portfolio.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return, predicted_volatilities=volatilities_max_return)
-    
+    portfolio_returns_return, transaction_costs_return, sharpe_ratio_return = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return, predicted_volatilities=volatilities_max_return)
+    multiInputGPR.visualizer.plot_backtest_results(portfolio_returns_return, transaction_costs_return, sharpe_ratio_return, "Max Return", "../plots/multi-input/max_return.png")
 
     optimal_weights_min_volatility, volatilities_min_volatility = portfolio.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility, predicted_volatilities=volatilities_min_volatility)    
+    portfolio_returns_volatility, transaction_costs_volatility, sharpe_ratio_volatility = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility, predicted_volatilities=volatilities_min_volatility)    
+    multiInputGPR.visualizer.plot_backtest_results(portfolio_returns_volatility, transaction_costs_volatility, sharpe_ratio_volatility, "Min Volatility", "../plots/multi-input/min_volatility.png")
     
     plt.show()
 

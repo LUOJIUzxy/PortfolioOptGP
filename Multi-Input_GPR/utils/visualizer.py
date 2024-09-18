@@ -104,10 +104,12 @@ class Visualizer:
         plt.savefig(filename)
         plt.close()
 
-    def plot_backtest_results(self, portfolio_returns, transaction_costs, title, filename):
+    def plot_backtest_results(self, portfolio_returns, transaction_costs, sharpe_ratio, title, filename):
         plt.figure(figsize=(12, 6))
         plt.plot(portfolio_returns, label="Portfolio Returns")
         plt.plot(transaction_costs, label="Transaction Costs")
+        plt.plot(sharpe_ratio, label="Sharpe Ratio")
+        plt.ylim(0.0, 0.02)
         plt.xlabel('Day')
         plt.ylabel('Returns')
         plt.title(title)

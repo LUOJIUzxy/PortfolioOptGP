@@ -83,7 +83,7 @@ class Portfolio:
         """Calculate portfolio return and volatility for given weights."""
         return self.optimizer.calculate_portfolio_performance(weights)
 
-    def evaluate_portfolio(self, strategy_name='sharpe', max_volatility=0.02, min_return=0.005):
+    def evaluate_portfolio(self, strategy_name='sharpe', max_volatility=0.02, min_return=0.005, isLogReturn=True):
         """Evaluate the portfolio using the selected strategy and calculate performance."""
         print(f" ============================================== Predicted Results: {strategy_name} =========================================================== ")
         optimal_weights = []
@@ -106,7 +106,11 @@ class Portfolio:
                     returns.append(self.returns[i][:(day+1)])
                     volatilities.append(self.variances[i][:(day+1)])
 
-                self.optimizer.set_predictions_cml(returns, volatilities, self.risk_free_rate)
+                # Update the optimizer with the current day's returns, update cumulative returns for each day
+                if isLogReturn:
+                    self.optimizer.set_cml_log_return(returns, volatilities, self.risk_free_rate)
+                else:
+                    self.optimizer.set_predictions_cml(returns, volatilities, self.risk_free_rate)
 
             # Get the optimal weights for the current day
             optimal_weights_daily = self.get_optimal_weights(strategy_name, max_volatility, min_return)
@@ -117,7 +121,12 @@ class Portfolio:
             portfolio_return, portfolio_volatility = self.calculate_performance(optimal_weights_daily)
 
             print(f"Day {(day+1)}: Optimal weights ({strategy_name}): {optimal_weights_daily}")
-            print(f"Day {(day+1)}: Predicted Portfolio Return (Cumulative): {portfolio_return:.4%}, Predicted Portfolio volatility: {portfolio_volatility:.4%}")
+
+            if isLogReturn:
+                portfolio_return = np.exp(portfolio_return) - 1
+                print(f"Day {(day+1)}: Predicted Portfolio Log Return (Cumulative): {portfolio_return:.4%}, Predicted Portfolio volatility: {portfolio_volatility:.4%}")
+            else:
+                print(f"Day {(day+1)}: Predicted Portfolio Return (Cumulative): {portfolio_return:.4%}, Predicted Portfolio volatility: {portfolio_volatility:.4%}")
 
             optimal_weights.append(optimal_weights_daily)
             predicted_volatilities.append(portfolio_volatility)
@@ -153,12 +162,20 @@ class Portfolio:
         # diag = np.diag(np.array(portfolio_variances))  # Diagonal covariance matrix
         
         sharpe_ratios = []
+        return_cmls = []
+        transaction_costs_cmls = []
 
         # Display daily returns and transaction costs
+        # Loop over each day in the dataset
         for i, (ret, trx, vars) in enumerate(zip(portfolio_returns, transaction_costs, predicted_volatilities)):
             daily_sharpe = (ret - self.risk_free_rate) / vars
             sharpe_ratios.append(daily_sharpe)
             print(f"Day {i+1}: Daily Portfolio Net Return = {ret:.4%}, Transaction Cost = {trx:.6%}, Portfolio Variance = {vars:.6%}, Daily Sharpe Ratio = {daily_sharpe:.4f}")
+
+            return_cml = historical_return_calculator.calculate_cumulative_return(portfolio_returns[:i+1])
+            return_cmls.append(return_cml)
+            transaction_costs_cml = historical_return_calculator.calculate_cumulative_transaction_costs(transaction_costs[:i+1])
+            transaction_costs_cmls.append(transaction_costs_cml)
 
         # Step 5: Calculate cumulative returns over the backtesting period using the Return class
         cumulative_return = historical_return_calculator.calculate_cumulative_return(portfolio_returns)
@@ -174,5 +191,7 @@ class Portfolio:
         sharpe_ratio = (cumulative_return - self.risk_free_rate) / cumulative_variance
         print(f"Sharpe Ratio: {sharpe_ratio:.6f}")
 
+           
+
         
-        return portfolio_returns, transaction_costs, sharpe_ratio
+        return return_cmls, transaction_costs_cmls

@@ -38,6 +38,22 @@ class Optimizer:
         self.Sigma = np.diag(np.array(cumulative_variances))  # Diagonal covariance matrix
 
         self.r_f = r_f
+    
+    def set_cml_log_return(self, predicted_log_returns, predicted_variances, r_f):
+        """
+        Set cumulative predictions based on asset-level log returns over multiple periods.
+        
+        :param predicted_log_returns: List of lists, where each sublist is the asset log returns over multiple periods.
+        :param r_f: Risk-free rate for Sharpe ratio calculation.
+        """
+        # Calculate cumulative returns for each asset: sum of log returns
+        self.mu = np.array([np.sum(asset_log_return_list) for asset_log_return_list in predicted_log_returns])
+
+        # Calculate cumulative variances by summing variances over multiple periods
+        cumulative_variances = [np.sum(asset_variance_list) for asset_variance_list in predicted_variances]
+        self.Sigma = np.diag(np.array(cumulative_variances))
+
+        self.r_f = r_f
 
     """Set the previous predicted returns for calculate broker fees."""
     def set_previous_weights(self, previous_weights):

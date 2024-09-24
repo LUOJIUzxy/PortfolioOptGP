@@ -103,15 +103,19 @@ class Visualizer:
         plt.grid(True)
         plt.savefig(filename)
         plt.close()
-
-    def plot_backtest_results(self, portfolio_returns, transaction_costs, sharpe_ratio, title, filename):
+    
+    def plot_backtest_cml(self, baseline_cmls, sharpe_cmls, max_return_cmls, min_vol_cmls, y_label, title, filename):
+        days = range(0, len(baseline_cmls))  # Create a list of days
+        
         plt.figure(figsize=(12, 6))
-        plt.plot(portfolio_returns, label="Portfolio Returns")
-        plt.plot(transaction_costs, label="Transaction Costs")
-        plt.plot(sharpe_ratio, label="Sharpe Ratio")
-        plt.ylim(0.0, 0.02)
+        plt.plot(days, baseline_cmls, label="Baseline", color="black")
+        plt.plot(days, sharpe_cmls, label="Sharpe", color="blue")
+        plt.plot(days, max_return_cmls, label="Max Return", color="green")
+        plt.plot(days, min_vol_cmls, label="Min Volatility", color="red")
         plt.xlabel('Day')
-        plt.ylabel('Returns')
+        plt.xlim(0, len(baseline_cmls))
+        plt.xticks(range(0, len(baseline_cmls) + 1, max(1, len(baseline_cmls) // 10)))  # Set X-axis ticks
+        plt.ylabel(y_label)
         plt.title(title)
         plt.legend()
         plt.grid(True)

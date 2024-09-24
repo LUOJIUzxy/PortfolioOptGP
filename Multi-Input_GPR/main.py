@@ -280,7 +280,7 @@ class MultiInputGPR:
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
                 X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
             visualizer = Visualizer()
-            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_Day.png')
+            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_log_return.png')
 
             # Calculate correlation between X and Y
             corr = self.calculate_correlation(Y_tf * y_std + y_mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
@@ -380,7 +380,7 @@ if __name__ == "__main__":
     portolio_assets = [ticker1, ticker2, ticker3, ticker4, ticker5]
 
     timeframes = ['d', 'w', 'm']
-    predict_Y = 'daily_log_return'
+    predict_Y = 'return'
 
     # Risk-free rate (daily)
     risk_free_rate = 0.01 / 252  
@@ -444,21 +444,29 @@ if __name__ == "__main__":
     optimizer = Optimizer(lambda_l1=l1, lambda_l2=l2, trx_fee=broker_fee, if_tx_penalty=if_add_broker_fee_as_regularisation) 
     portfolio = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=broker_fee, if_cml=True)
     
-    optimal_weights, volatilities = portfolio.evaluate_portfolio(strategy_name='constant', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio_returns, transaction_costs, sharpe_ratio = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='constant', optimal_weights=optimal_weights, predicted_volatilities=volatilities)
-    multiInputGPR.visualizer.plot_backtest_results(portfolio_returns, transaction_costs, sharpe_ratio, "Baseline", "../plots/multi-input/baseline.png")
+    optimal_weights, volatilities = portfolio.evaluate_portfolio(strategy_name='constant', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=False)
+    portfolio_returns, transaction_costs = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='constant', optimal_weights=optimal_weights, predicted_volatilities=volatilities)
+    
+    optimal_weights_max_sharpe, volatilities_max_sharpe = portfolio.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=False)
+    portfolio_returns_sharpe, transaction_costs_sharpe = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe, predicted_volatilities=volatilities_max_sharpe)
+    
+    optimal_weights_max_return, volatilities_max_return = portfolio.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=False)
+    portfolio_returns_return, transaction_costs_return = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return, predicted_volatilities=volatilities_max_return)
+   
+    optimal_weights_min_volatility, volatilities_min_volatility = portfolio.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=False)
+    portfolio_returns_volatility, transaction_costs_volatility = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility, predicted_volatilities=volatilities_min_volatility)    
+    
+    portfolio_returns.insert(0, 0.0)
+    portfolio_returns_sharpe.insert(0, 0.0)
+    portfolio_returns_return.insert(0, 0.0)
+    portfolio_returns_volatility.insert(0, 0.0)
 
-    optimal_weights_max_sharpe, volatilities_max_sharpe = portfolio.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio_returns_sharpe, transaction_costs_sharpe, sharpe_ratio_sharpe = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe, predicted_volatilities=volatilities_max_sharpe)
-    multiInputGPR.visualizer.plot_backtest_results(portfolio_returns_sharpe, transaction_costs_sharpe, sharpe_ratio_sharpe, "Sharpe Ratio", "../plots/multi-input/sharpe_ratio.png")
-
-    optimal_weights_max_return, volatilities_max_return = portfolio.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio_returns_return, transaction_costs_return, sharpe_ratio_return = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return, predicted_volatilities=volatilities_max_return)
-    multiInputGPR.visualizer.plot_backtest_results(portfolio_returns_return, transaction_costs_return, sharpe_ratio_return, "Max Return", "../plots/multi-input/max_return.png")
-
-    optimal_weights_min_volatility, volatilities_min_volatility = portfolio.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
-    portfolio_returns_volatility, transaction_costs_volatility, sharpe_ratio_volatility = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility, predicted_volatilities=volatilities_min_volatility)    
-    multiInputGPR.visualizer.plot_backtest_results(portfolio_returns_volatility, transaction_costs_volatility, sharpe_ratio_volatility, "Min Volatility", "../plots/multi-input/min_volatility.png")
+    transaction_costs.insert(0, 0.0)
+    transaction_costs_sharpe.insert(0, 0.0)
+    transaction_costs_return.insert(0, 0.0)
+    transaction_costs_volatility.insert(0, 0.0)
+    multiInputGPR.visualizer.plot_backtest_cml(portfolio_returns, portfolio_returns_sharpe, portfolio_returns_return, portfolio_returns_volatility, "Cumulative Returns", "Portfolio Comparison", "../plots/multi-input/portfolio_comparison.png")
+    multiInputGPR.visualizer.plot_backtest_cml(transaction_costs, transaction_costs_sharpe, transaction_costs_return, transaction_costs_volatility, "Cumulative Transaction Costs", "Transaction Costs Comparison", "../plots/multi-input/trx_costs_comparison.png")
     
     plt.show()
 

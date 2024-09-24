@@ -2,6 +2,7 @@ from Strategies.strategy import Strategy
 from Strategies.sharpe_strategy import SharpeRatioStrategy
 from Strategies.min_volatility_strategy import MinVolatilityStrategy
 from Strategies.max_return_strategy import MaxReturnStrategy
+from Strategies.constant_baseline_strategy import ConstantStrategy
 
 import numpy as np
 import pandas as pd
@@ -39,7 +40,8 @@ class Portfolio:
         self.strategy_mapping = {
             'sharpe': SharpeRatioStrategy,
             'max_return': MaxReturnStrategy,
-            'min_volatility': MinVolatilityStrategy
+            'min_volatility': MinVolatilityStrategy,
+            'constant': ConstantStrategy,
         }
 
 
@@ -86,6 +88,7 @@ class Portfolio:
         print(f" ============================================== Predicted Results: {strategy_name} =========================================================== ")
         optimal_weights = []
         predicted_volatilities = []
+        #Loop over each day in the dataset
         for day in range(0, len(self.returns[0])):
             returns = []
             volatilities = []

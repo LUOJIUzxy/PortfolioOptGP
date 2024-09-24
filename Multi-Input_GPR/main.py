@@ -444,6 +444,10 @@ if __name__ == "__main__":
     optimizer = Optimizer(lambda_l1=l1, lambda_l2=l2, trx_fee=broker_fee, if_tx_penalty=if_add_broker_fee_as_regularisation) 
     portfolio = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=broker_fee, if_cml=True)
     
+    optimal_weights, volatilities = portfolio.evaluate_portfolio(strategy_name='constant', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
+    portfolio_returns, transaction_costs, sharpe_ratio = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='constant', optimal_weights=optimal_weights, predicted_volatilities=volatilities)
+    multiInputGPR.visualizer.plot_backtest_results(portfolio_returns, transaction_costs, sharpe_ratio, "Baseline", "../plots/multi-input/baseline.png")
+
     optimal_weights_max_sharpe, volatilities_max_sharpe = portfolio.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold)
     portfolio_returns_sharpe, transaction_costs_sharpe, sharpe_ratio_sharpe = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe, predicted_volatilities=volatilities_max_sharpe)
     multiInputGPR.visualizer.plot_backtest_results(portfolio_returns_sharpe, transaction_costs_sharpe, sharpe_ratio_sharpe, "Sharpe Ratio", "../plots/multi-input/sharpe_ratio.png")

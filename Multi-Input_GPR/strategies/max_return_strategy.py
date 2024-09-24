@@ -16,7 +16,7 @@ class MaxReturnStrategy(Strategy):
         :param min_return: Minimum return constraint.
         :return: Optimal portfolio weights.
         """
-        # Perform optimization to maximize return (constrained by volatility)
+       
         optimal_weights = optimizer.maximize_returns(max_volatility=max_volatility)
 
         # Apply broker fee adjustments if the flag is enabled

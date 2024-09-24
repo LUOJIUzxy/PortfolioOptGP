@@ -261,7 +261,7 @@ class MultiInputGPR:
     # Fetch Train + Test data 
     def run_step_3(self) -> None:
         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
-        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=True)
+        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
         X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
 
         #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
@@ -271,13 +271,13 @@ class MultiInputGPR:
         X_full = []
         for feature in self.features:
             if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
-                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=True)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
                 X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
             elif feature == "SP500" or feature == "NasDaq100":
-                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks/index", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=True)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks/index", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
                 X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks/Index", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
             else:
-                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=True)
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
                 X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
             visualizer = Visualizer()
             visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_Day.png')
@@ -380,7 +380,7 @@ if __name__ == "__main__":
     portolio_assets = [ticker1, ticker2, ticker3, ticker4, ticker5]
 
     timeframes = ['d', 'w', 'm']
-    predict_Y = 'return'
+    predict_Y = 'daily_log_return'
 
     # Risk-free rate (daily)
     risk_free_rate = 0.01 / 252  

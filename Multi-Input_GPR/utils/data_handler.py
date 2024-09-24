@@ -86,7 +86,8 @@ class DataHandler:
         first_return = df['return'].iloc[1]
         df.fillna({'return': first_return}, inplace=True)
         df['intraday_return'] = (df['close'] - df['open']) / df['open']
-        df['log_return'] = np.log(df['close'] / df['close'].shift(1))
+        df['daily_log_return'] = np.log(df['close'] / df['close'].shift(1))
+        df['daily_log_return'].fillna(0, inplace=True)
 
         ########################################
         ### Don't Touch The Original Data!!!

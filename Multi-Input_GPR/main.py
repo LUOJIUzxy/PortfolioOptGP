@@ -442,7 +442,7 @@ class MultiInputGPR:
 
             f_means.append(f_mean[-1])
             f_vars.append(f_cov[-1])
-            actual_returns.append(Y_AAPL_full_tf[i])
+            actual_returns.append(Y_actual[i])
 
         # Return two-day predictions
         return [f_means, f_vars, actual_returns]
@@ -481,7 +481,12 @@ if __name__ == "__main__":
     portolio_assets = [ticker1, ticker2, ticker3, ticker4, ticker5]
 
     timeframes = ['d', 'w', 'm']
-    predict_Y = 'daily_log_return'
+    predict_Y = 'return'
+    isLogReturn = False
+    if predict_Y == 'daily_log_return':
+        isLogReturn = True
+    
+    
 
     # Risk-free rate (daily)
     risk_free_rate = 0.01 / 252  
@@ -546,16 +551,17 @@ if __name__ == "__main__":
     optimizer = Optimizer(lambda_l1=l1, lambda_l2=l2, trx_fee=broker_fee, if_tx_penalty=if_add_broker_fee_as_regularisation) 
     portfolio = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=broker_fee, if_cml=True)
     
-    optimal_weights, volatilities = portfolio.evaluate_portfolio(strategy_name='constant', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=False)
+    # isLogReturn = False
+    optimal_weights, volatilities = portfolio.evaluate_portfolio(strategy_name='constant', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn)
     portfolio_returns, transaction_costs = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='constant', optimal_weights=optimal_weights, predicted_volatilities=volatilities)
     
-    optimal_weights_max_sharpe, volatilities_max_sharpe = portfolio.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=False)
+    optimal_weights_max_sharpe, volatilities_max_sharpe = portfolio.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn)
     portfolio_returns_sharpe, transaction_costs_sharpe = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe, predicted_volatilities=volatilities_max_sharpe)
     
-    optimal_weights_max_return, volatilities_max_return = portfolio.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=False)
+    optimal_weights_max_return, volatilities_max_return = portfolio.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn)
     portfolio_returns_return, transaction_costs_return = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return, predicted_volatilities=volatilities_max_return)
    
-    optimal_weights_min_volatility, volatilities_min_volatility = portfolio.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=False)
+    optimal_weights_min_volatility, volatilities_min_volatility = portfolio.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn)
     portfolio_returns_volatility, transaction_costs_volatility = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility, predicted_volatilities=volatilities_min_volatility)    
     
     portfolio_returns.insert(0, 0.0)

@@ -347,6 +347,107 @@ class MultiInputGPR:
         # Return two-day predictions
         return [f_mean[-5:], f_cov[-5:], Y_actual[-5:]]
     
+    # Re-train model iteratively
+    def run_step_4(self) -> None:
+        f_means = []
+        f_vars = []
+        actual_returns = []
+         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
+        X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
+        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
+
+        #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
+        # X columns vector for training
+        _X = []
+        # X columns vector for testing
+        X_full = []
+        for feature in self.features:
+            if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
+            elif feature == "SP500" or feature == "NasDaq100":
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks/index", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks/Index", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
+            else:
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
+            visualizer = Visualizer()
+            visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_log_return.png')
+
+            # Calculate correlation between X and Y
+            corr = self.calculate_correlation(Y_tf * y_std + y_mean, Y_AAPL_tf * AAPL_std + AAPL_mean)
+            print(f"Correlation between {feature} and {self.ticker}: {corr:.4f}")
+
+            if np.abs(corr) > self.threshold:
+                _X.append(Y_tf)
+                X_full.append(Y_full_tf)
+                print(f"Selected {feature} for training")
+            else:
+                print(f"Discarded {feature} for training")
+
+        #3. Concatenate multi-dimenstional input data X = [X1, X2, ...], as days * features vector
+        # X_AAPL_tf should be equal to X_tf
+        
+        ## Add Time as a feature
+        _X.append(X_AAPL_tf)
+        X = self.data_handler.concatenate_X(_X)
+
+        Y = Y_AAPL_tf
+        self.full_correlations(X, Y)
+
+         # add test data to predict as well
+        X_full.append(X_AAPL_full_tf)
+        X_full = self.data_handler.concatenate_X(X_full)
+        self.kernel_combinations = [
+            self.create_composite_kernel(X.shape[1], k1, k2)
+            for k1, k2 in self.kernel_combinations
+        ]
+
+        for i in range(len(Y_AAPL_tf), len(Y_AAPL_full_tf) - 1):
+            #4. Train the model with the input data and the actual values of to-be-predicted stock data
+            print(X_full[:i].shape[1])
+            
+            
+            for composite_kernel in self.kernel_combinations:
+                if self.isFixed:
+                    model = gpflow.models.GPR(
+                        (X_full[:i], Y_AAPL_full_tf[:i]), kernel=deepcopy(composite_kernel), noise_variance=1e-3
+                    )
+                    
+                    model = ModelTrainer.train_model(model)
+                else:
+                    model = ModelTrainer.train_likelihood(X_full[:i], Y_AAPL_full_tf[:i], composite_kernel)
+
+           
+            # predict the mean and variance of the to-be-predicted stock data using the trained model, with input X vector of days * features
+            f_mean, f_cov = model.predict_f(X_full[:i+1], full_cov=False)
+            print(f"f_mean: {f_mean[-1]}")
+            print(f"f_cov: {f_cov[-1]}")
+
+            # Calculate mse for all train and test data
+            # Actually should only calculate the test period data
+            mse_test = mean_squared_error(Y_AAPL_full_tf[:i+1], f_mean.numpy())
+            print(f"Mean Squared Error Normalized: {mse_test:.4f}")
+
+            print(f"Mean: {AAPL_full_mean}, Std: {AAPL_full_std}")
+            f_mean = f_mean * AAPL_full_std + AAPL_full_mean
+            Y_actual = Y_AAPL_full_tf[:i+1] * AAPL_full_std + AAPL_full_mean
+            f_cov = f_cov * AAPL_full_std ** 2
+
+            
+            mse_test = mean_squared_error(Y_actual, f_mean.numpy())
+            print(f"Mean Squared Error DeNormalized: {mse_test:.4f}")
+
+            #visualizer.plot_GP(X_AAPL_full_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/future_predictions_{self.ticker}.png')
+
+            f_means.append(f_mean[-1])
+            f_vars.append(f_cov[-1])
+            actual_returns.append(Y_AAPL_full_tf[i])
+
+        # Return two-day predictions
+        return [f_means, f_vars, actual_returns]
+
+
     def run_arima(self) -> None:
         
         df = self.data_handler.process_df("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, 'close')
@@ -380,7 +481,7 @@ if __name__ == "__main__":
     portolio_assets = [ticker1, ticker2, ticker3, ticker4, ticker5]
 
     timeframes = ['d', 'w', 'm']
-    predict_Y = 'return'
+    predict_Y = 'daily_log_return'
 
     # Risk-free rate (daily)
     risk_free_rate = 0.01 / 252  
@@ -425,7 +526,8 @@ if __name__ == "__main__":
             removal_percentage=0.1,
             isFixedLikelihood=False
         )
-        predicted = multiInputGPR.run_step_3()
+        #predicted = multiInputGPR.run_step_3()
+        predicted = multiInputGPR.run_step_4()
         
         # [ [asset1 over 5 days], [asset2 over 5 days], ...]
         predicted_values.append(predicted[0])

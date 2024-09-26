@@ -403,7 +403,7 @@ class MultiInputGPR:
             for k1, k2 in self.kernel_combinations
         ]
 
-        for i in range(len(Y_AAPL_tf), len(Y_AAPL_full_tf) - 1):
+        for i in range(len(Y_AAPL_tf), len(Y_AAPL_full_tf)):
             #4. Train the model with the input data and the actual values of to-be-predicted stock data
             print(X_full[:i].shape[1])
             
@@ -442,7 +442,7 @@ class MultiInputGPR:
 
             f_means.append(f_mean[-1])
             f_vars.append(f_cov[-1])
-            actual_returns.append(Y_actual[i])
+            actual_returns.append(Y_actual[-1])
 
         # Return two-day predictions
         return [f_means, f_vars, actual_returns]
@@ -481,7 +481,7 @@ if __name__ == "__main__":
     portolio_assets = [ticker1, ticker2, ticker3, ticker4, ticker5]
 
     timeframes = ['d', 'w', 'm']
-    predict_Y = 'return'
+    predict_Y = 'daily_log_return'
     isLogReturn = False
     if predict_Y == 'daily_log_return':
         isLogReturn = True

@@ -393,7 +393,7 @@ class MultiInputGPR:
         X = self.data_handler.concatenate_X(_X)
 
         Y = Y_AAPL_tf
-        self.full_correlations(X, Y)
+        full_corr = np.array(self.full_correlations(X, Y))
 
          # add test data to predict as well
         X_full.append(X_AAPL_full_tf)
@@ -481,7 +481,7 @@ if __name__ == "__main__":
     portolio_assets = [ticker1, ticker2, ticker3, ticker4, ticker5]
 
     timeframes = ['d', 'w', 'm']
-    predict_Y = 'daily_log_return'
+    predict_Y = 'return'
     isLogReturn = False
     if predict_Y == 'daily_log_return':
         isLogReturn = True
@@ -496,7 +496,7 @@ if __name__ == "__main__":
 
     l1 = 0.01
     l2 = 0.00
-    broker_fee = 0.00001
+    broker_fee = 0.00001 # 0.01%
     if_add_broker_fee_as_regularisation = True
 
 
@@ -532,7 +532,7 @@ if __name__ == "__main__":
             isFixedLikelihood=False
         )
         #predicted = multiInputGPR.run_step_3()
-        predicted = multiInputGPR.run_step_4()
+        predicted = multiInputGPR.run_step_3()
         
         # [ [asset1 over 5 days], [asset2 over 5 days], ...]
         predicted_values.append(predicted[0])
@@ -549,7 +549,7 @@ if __name__ == "__main__":
     
 
     optimizer = Optimizer(lambda_l1=l1, lambda_l2=l2, trx_fee=broker_fee, if_tx_penalty=if_add_broker_fee_as_regularisation) 
-    portfolio = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=broker_fee, if_cml=True)
+    portfolio = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=broker_fee)
     
     # isLogReturn = False
     optimal_weights, volatilities = portfolio.evaluate_portfolio(strategy_name='constant', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn)

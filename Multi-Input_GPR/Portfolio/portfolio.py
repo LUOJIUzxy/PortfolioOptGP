@@ -11,17 +11,17 @@ from Portfolio.returns import Return
 from Portfolio.volatilities import Volatility
 
 class Portfolio:
-    def __init__(self, assets, asset_returns, predicted_volatilities, optimizer, risk_free_rate=0.01/252, lambda_=0.01, broker_fee=0, if_cml=False):
+    def __init__(self, assets, asset_returns, predicted_volatilities, optimizer, risk_free_rate=0.01/252, lambda_=0.01, broker_fee=0):
         """
         Initialize the Portfolio with a list of assets, optimizer, strategy, and optional parameters for fees and regularization.
         
         :param assets: List of asset tickers.
+        :param asset_returns: Asset returns for each day. [ [asset1 over 5 days], [asset2 over 5 days], ...]
+        :param predicted_volatilities: Predicted volatilities for each asset. [ [asset1 over 5 days], [asset2 over 5 days], ...]
         :param optimizer: Optimizer instance for portfolio optimization.
-        :param strategy: Strategy instance to handle different optimization strategies.
         :param risk_free_rate: The risk-free rate used in optimization (default is 1% annualized).
         :param lambda_: Regularization parameter.
         :param broker_fee: Broker fee percentage applied to each trade.
-        :param regularization: Boolean to indicate whether regularization is applied.
         """
         self.assets = assets
         self.optimizer = optimizer
@@ -33,8 +33,6 @@ class Portfolio:
 
         self.returns = asset_returns
         self.variances = predicted_volatilities  # Initialize previous weights
-
-        self.if_cml = if_cml
 
         # Strategy mapping - maps strategy names to their corresponding classes
         self.strategy_mapping = {

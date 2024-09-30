@@ -64,7 +64,7 @@ class MultiInputGPR:
         return corr_matrix[0, 1]
 
     # X as input with the shape of (n, m), Y as output with the shape of (n, 1)
-    def full_correlations(self, X, Y):
+    def full_correlations(self, X, Y=None):
         # Convert TensorFlow tensors to numpy arrays
         if isinstance(X, tf.Tensor):
             X = X.numpy()
@@ -72,13 +72,16 @@ class MultiInputGPR:
             Y = Y.numpy()
 
         # Ensure Y is 1D
-        Y = Y.reshape(-1)
+        if Y is not None:
+            Y = Y.reshape(-1)
 
-        # Combine X and Y for correlation calculation
-        combined = np.column_stack((X, Y))
-
-        # Calculate full correlation matrix
+            # Combine X and Y for correlation calculation
+            combined = np.column_stack((X, Y))
+        else:
+            combined = X
+        
         full_corr = np.corrcoef(combined.T)
+
 
         print("\nFull Correlation Matrix:")
         print(full_corr)
@@ -345,7 +348,7 @@ class MultiInputGPR:
         visualizer.plot_GP(X_AAPL_full_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/future_predictions_{self.ticker}.png')
 
         # Return two-day predictions
-        return [f_mean[-5:], f_cov[-5:], Y_actual[-5:]]
+        return [f_mean[-5:], f_cov[-5:], Y_actual[-5:], Y_AAPL_tf]
     
     # Re-train model iteratively
     def run_step_4(self) -> None:
@@ -513,6 +516,7 @@ if __name__ == "__main__":
     predicted_values = []
     predicted_variances = []
     predicted_Y_values = []
+    to_be_predicted_assets = []
 
     for to_be_predicted in portolio_assets:
         print(f"Predicting {to_be_predicted}")
@@ -538,9 +542,14 @@ if __name__ == "__main__":
         predicted_values.append(predicted[0])
         predicted_variances.append(predicted[1])
         predicted_Y_values.append(predicted[2])
+        to_be_predicted_assets.append(predicted[3])
+
     
     for to_be_predicted in portolio_assets:
-        multiInputGPR.run_arima()   
+        multiInputGPR.run_arima() 
+
+    Y_assets = multiInputGPR.data_handler.concatenate_X(to_be_predicted_assets)
+    full_corr = multiInputGPR.full_correlations(Y_assets)
      
 
     optimal_weights_min_volatility = []
@@ -552,16 +561,16 @@ if __name__ == "__main__":
     portfolio = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=broker_fee)
     
     # isLogReturn = False
-    optimal_weights, volatilities = portfolio.evaluate_portfolio(strategy_name='constant', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn)
+    optimal_weights, volatilities = portfolio.evaluate_portfolio(strategy_name='constant', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn, cov=full_corr)
     portfolio_returns, transaction_costs = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='constant', optimal_weights=optimal_weights, predicted_volatilities=volatilities)
     
-    optimal_weights_max_sharpe, volatilities_max_sharpe = portfolio.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn)
+    optimal_weights_max_sharpe, volatilities_max_sharpe = portfolio.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn, cov=full_corr)
     portfolio_returns_sharpe, transaction_costs_sharpe = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe, predicted_volatilities=volatilities_max_sharpe)
     
-    optimal_weights_max_return, volatilities_max_return = portfolio.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn)
+    optimal_weights_max_return, volatilities_max_return = portfolio.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn, cov=full_corr)
     portfolio_returns_return, transaction_costs_return = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return, predicted_volatilities=volatilities_max_return)
    
-    optimal_weights_min_volatility, volatilities_min_volatility = portfolio.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn)
+    optimal_weights_min_volatility, volatilities_min_volatility = portfolio.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn, cov=full_corr)
     portfolio_returns_volatility, transaction_costs_volatility = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility, predicted_volatilities=volatilities_min_volatility)    
     
     portfolio_returns.insert(0, 0.0)

@@ -33,7 +33,7 @@ class Strategy(ABC):
         return weights
 
     @abstractmethod
-    def optimize(self, optimizer, strategy_name, max_volatility, min_return):
+    def optimize(self, optimizer, max_volatility, min_return):
         """
         Abstract method to be implemented by subclasses for optimizing portfolio weights.
         """

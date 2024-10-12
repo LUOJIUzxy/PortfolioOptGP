@@ -3,6 +3,7 @@ from Strategies.sharpe_strategy import SharpeRatioStrategy
 from Strategies.min_volatility_strategy import MinVolatilityStrategy
 from Strategies.max_return_strategy import MaxReturnStrategy
 from Strategies.constant_baseline_strategy import ConstantStrategy
+from Strategies.dynamic_strategy import DynamicStrategy
 
 import numpy as np
 import pandas as pd
@@ -42,6 +43,7 @@ class Portfolio:
             'max_return': MaxReturnStrategy,
             'min_volatility': MinVolatilityStrategy,
             'constant': ConstantStrategy,
+            'dynamic': DynamicStrategy,
         }
 
     def select_strategy(self, strategy_name):
@@ -59,7 +61,7 @@ class Portfolio:
         return strategy_class(broker_fee=self.broker_fee)
 
     # Do the portfolio optimization
-    def get_optimal_weights(self, strategy_name='sharpe', max_volatility=0.02, min_return=0.005):
+    def get_optimal_weights(self, strategy_name='sharpe', max_volatility=0.02, min_return=0.005, prob_threshold=0.05, mu_A=None, cov_A=None, mu_B=None, cov_B=None, previous_weights=None):
         """
         Get optimal portfolio weights based on the selected strategy.
         
@@ -73,7 +75,12 @@ class Portfolio:
         strategy = self.select_strategy(strategy_name)
 
         # Optimize portfolio weights using the strategy
-        optimal_weights = strategy.optimize(self.optimizer, strategy_name, max_volatility, min_return)
+        if strategy_name == 'dynamic':
+            optimal_weights = strategy.optimize(self.optimizer, max_volatility, prob_threshold, mu_A, cov_A, mu_B, cov_B, previous_weights)
+        else:
+            optimal_weights = strategy.optimize(self.optimizer,  max_volatility, min_return)
+
+        
 
         return optimal_weights
 
@@ -82,13 +89,14 @@ class Portfolio:
         """Calculate portfolio return and volatility for given weights."""
         return self.optimizer.calculate_portfolio_performance(weights)
 
-    def evaluate_portfolio(self, strategy_name='sharpe', max_volatility=0.02, min_return=0.005, isLogReturn=True, cov=None):
+    def evaluate_portfolio(self, strategy_name='sharpe', max_volatility=0.02, min_return=0.005, prob_threshold=0.05, isLogReturn=True, cov=None):
         """Evaluate the portfolio using the selected strategy and calculate performance."""
         print(f" ============================================== Predicted Results: {strategy_name} =========================================================== ")
         optimal_weights = []
         predicted_volatilities = []
 
         cov_matrixs = []
+        daily_returns = []
 
         #Loop over each day in the dataset
         for day in range(0, len(self.returns[0])):
@@ -110,7 +118,6 @@ class Portfolio:
                     daily_return.append(self.returns[i][0][0])
                 self.optimizer.set_predictions(returns, volatilities, self.risk_free_rate)
                 
-                
             else:
                 # Loop over every asset, and get the returns and volatilities for the current day
                 for i in range(len(self.returns)):
@@ -119,29 +126,25 @@ class Portfolio:
                     std_devs.append(np.sqrt(self.variances[i][0][0]))
                     daily_return.append(self.returns[i][day][0])
                 
-                # print("$$$$$$$$$$$$$$$$$$$$$$$$" + str(len(std_devs)))
-                # cov_matrix = np.outer(np.array(std_devs), np.array(std_devs)) * cov
-                # print(cov_matrix)
-                # cov_matrixs.append(cov_matrix)
-                
-                # joint_distribution = multivariate_normal(mean=returns, cov=cov_matrix)
-
-                # Update the optimizer with the current day's returns, update cumulative returns for each day
+               
                 if isLogReturn:
                     self.optimizer.set_cml_log_return(returns, volatilities, self.risk_free_rate)
                 else:
                     self.optimizer.set_predictions_cml(returns, volatilities, self.risk_free_rate)
             
             # Calculate the multi-variate normal distribution for the current day
-            print("??????????????" + str(len(std_devs)))
+            daily_returns.append(daily_return)
             cov_matrix = np.outer(np.array(std_devs), np.array(std_devs)) * cov
-            print("??????????????" + str(cov_matrix))
             cov_matrixs.append(cov_matrix)
-            print(np.array(daily_return))
             joint_distribution = multivariate_normal(mean=np.array(daily_return), cov=cov_matrix)
 
-            # Get the optimal weights for the current day
-            optimal_weights_daily = self.get_optimal_weights(strategy_name, max_volatility, min_return)
+            if day == 0:
+                optimal_weights_daily = self.get_optimal_weights(strategy_name, max_volatility, min_return, prob_threshold, mu_A=None, cov_A=None, mu_B=np.array(daily_return), cov_B=cov_matrix, previous_weights=None)
+            else:
+                # Get the optimal weights for the current day
+                optimal_weights_daily = self.get_optimal_weights(strategy_name, max_volatility, min_return, prob_threshold, mu_A=np.array(daily_returns[-2]), cov_A=cov_matrixs[-2], mu_B=np.array(daily_return), cov_B=cov_matrix, previous_weights=optimal_weights[-1])
+
+
 
             # Calculate the portfolio return and volatility for the current day
             portfolio_return, portfolio_volatility = self.calculate_performance(optimal_weights_daily)

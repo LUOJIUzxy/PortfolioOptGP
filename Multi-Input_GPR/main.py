@@ -495,7 +495,8 @@ if __name__ == "__main__":
     risk_free_rate = 0.01 / 252  
 
     max_volatility_threshold = 0.02  
-    min_return_threshold = 0.005 
+    min_return_threshold = 0.005
+    prob_threshold = 0.75
 
     l1 = 0.01
     l2 = 0.00
@@ -572,7 +573,11 @@ if __name__ == "__main__":
    
     optimal_weights_min_volatility, volatilities_min_volatility = portfolio.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn, cov=full_corr)
     portfolio_returns_volatility, transaction_costs_volatility = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility, predicted_volatilities=volatilities_min_volatility)    
-    
+
+    optimal_weights_dynamic, volatilities_dynamic = portfolio.evaluate_portfolio(strategy_name='dynamic', max_volatility=max_volatility_threshold, min_return=min_return_threshold, prob_threshold=prob_threshold, isLogReturn=isLogReturn, cov=full_corr)
+    portfolio_returns_volatility, transaction_costs_volatility = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='dynamic', optimal_weights=optimal_weights_min_volatility, predicted_volatilities=volatilities_min_volatility)    
+ 
+
     portfolio_returns.insert(0, 0.0)
     portfolio_returns_sharpe.insert(0, 0.0)
     portfolio_returns_return.insert(0, 0.0)

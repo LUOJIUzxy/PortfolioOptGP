@@ -6,7 +6,7 @@ class MinVolatilityStrategy(Strategy):
     Strategy to minimize portfolio volatility given a minimum return constraint.
     """
 
-    def optimize(self, optimizer: Optimizer, strategy_name, max_volatility, min_return):
+    def optimize(self, optimizer: Optimizer, max_volatility, min_return):
         """
         Optimize portfolio to maximize returns given a volatility constraint.
         

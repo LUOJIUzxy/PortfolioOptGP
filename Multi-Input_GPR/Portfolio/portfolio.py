@@ -92,9 +92,14 @@ class Portfolio:
 
         #Loop over each day in the dataset
         for day in range(0, len(self.returns[0])):
+            # returns for set predictions purpose
             returns = []
             volatilities = []
+
+            # std_devs，return, cov_matrix for calculating multivariate normal distribution
             std_devs = []
+            daily_return = []
+            cov_matrix = None
             
             # Update the optimizer with the current day's returns, update cumulative returns for each day
             if day == 0:
@@ -102,12 +107,9 @@ class Portfolio:
                     returns.append(self.returns[i][0][0])
                     volatilities.append(self.variances[i][0][0])
                     std_devs.append(np.sqrt(self.variances[i][0][0]))
+                    daily_return.append(self.returns[i][0][0])
                 self.optimizer.set_predictions(returns, volatilities, self.risk_free_rate)
-                print(len(std_devs))
-                cov_matrix = np.outer(np.array(std_devs), np.array(std_devs)) * cov
-                cov_matrixs.append(cov_matrix)
-
-                joint_distribution = multivariate_normal(mean=returns, cov=cov_matrix)
+                
                 
             else:
                 # Loop over every asset, and get the returns and volatilities for the current day
@@ -115,16 +117,28 @@ class Portfolio:
                     returns.append(self.returns[i][:(day+1)])
                     volatilities.append(self.variances[i][:(day+1)])
                     std_devs.append(np.sqrt(self.variances[i][0][0]))
+                    daily_return.append(self.returns[i][day][0])
                 
-                cov_matrix = np.outer(np.array(std_devs), np.array(std_devs)) * cov
-                cov_matrixs.append(cov_matrix)
-                joint_distribution = multivariate_normal(mean=returns, cov=cov_matrix)
+                # print("$$$$$$$$$$$$$$$$$$$$$$$$" + str(len(std_devs)))
+                # cov_matrix = np.outer(np.array(std_devs), np.array(std_devs)) * cov
+                # print(cov_matrix)
+                # cov_matrixs.append(cov_matrix)
+                
+                # joint_distribution = multivariate_normal(mean=returns, cov=cov_matrix)
 
                 # Update the optimizer with the current day's returns, update cumulative returns for each day
                 if isLogReturn:
                     self.optimizer.set_cml_log_return(returns, volatilities, self.risk_free_rate)
                 else:
                     self.optimizer.set_predictions_cml(returns, volatilities, self.risk_free_rate)
+            
+            # Calculate the multi-variate normal distribution for the current day
+            print("??????????????" + str(len(std_devs)))
+            cov_matrix = np.outer(np.array(std_devs), np.array(std_devs)) * cov
+            print("??????????????" + str(cov_matrix))
+            cov_matrixs.append(cov_matrix)
+            print(np.array(daily_return))
+            joint_distribution = multivariate_normal(mean=np.array(daily_return), cov=cov_matrix)
 
             # Get the optimal weights for the current day
             optimal_weights_daily = self.get_optimal_weights(strategy_name, max_volatility, min_return)

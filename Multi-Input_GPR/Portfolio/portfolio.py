@@ -123,7 +123,7 @@ class Portfolio:
                 for i in range(len(self.returns)):
                     returns.append(self.returns[i][:(day+1)])
                     volatilities.append(self.variances[i][:(day+1)])
-                    std_devs.append(np.sqrt(self.variances[i][0][0]))
+                    std_devs.append(np.sqrt(self.variances[i][day][0]))
                     daily_return.append(self.returns[i][day][0])
                 
                

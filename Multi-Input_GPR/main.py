@@ -496,7 +496,7 @@ if __name__ == "__main__":
 
     max_volatility_threshold = 0.02  
     min_return_threshold = 0.005
-    prob_threshold = 0.75
+    prob_threshold = 0.05
 
     l1 = 0.01
     l2 = 0.00

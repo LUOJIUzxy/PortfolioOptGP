@@ -21,7 +21,7 @@ class DynamicStrategy(Strategy):
     
     # Multivariate normal version
     # A should be previous time point, B should be current time point
-    def probability_A_greater_than_B_mvnorm(self, mu_A, cov_A, mu_B, cov_B, num_samples=100000):
+    def probability_A_greater_than_B_mvnorm(self, mu_A, cov_A, mu_B, cov_B, num_samples=1000):
         """
         Estimate the probability that A > B for two multivariate normal distributions A ~ N(mu_A, cov_A)
         and B ~ N(mu_B, cov_B) using Monte Carlo sampling.
@@ -51,6 +51,7 @@ class DynamicStrategy(Strategy):
 
         # Estimate the probability
         prob = count_A_greater_B / num_samples
+        print("Probability A > B: ", prob)
 
         return prob
 
@@ -66,21 +67,23 @@ class DynamicStrategy(Strategy):
         :param min_return: Minimum return constraint.
         :return: Optimal portfolio weights.
         """
-        print("mu_A: ", mu_A)
-        print("cov_A: ", cov_A)
-        print("mu_B: ", mu_B)
-        print("cov_B: ", cov_B)
-        print("prev_optimal_weights: ", prev_optimal_weights)
-        print("probability threshold: ", prob_threshold)
+        # print("mu_A: ", mu_A)
+        # print("cov_A: ", cov_A)
+        # print("mu_B: ", mu_B)
+        # print("cov_B: ", cov_B)
+        # print("prev_optimal_weights: ", prev_optimal_weights)
+        # print("probability threshold: ", prob_threshold)
         if mu_A is None:
             # If it is the first time point, optimize the portfolio to maximize returns
             optimal_weights = optimizer.maximize_returns(max_volatility)
         else:
             prob = self.probability_A_greater_than_B_mvnorm(mu_A, cov_A, mu_B, cov_B)
             if prob > prob_threshold:
+                print("Probability is greater than threshold, optimizing for returns")
                 optimal_weights = optimizer.maximize_returns(max_volatility)
             else:
                 # optimal weights stay the same as the previous time point
+                print("Probability is less than threshold, keeping the same weights as the previous time point")
                 optimal_weights = prev_optimal_weights
 
         return optimal_weights

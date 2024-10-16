@@ -9,6 +9,7 @@ class Visualizer:
     def setup_plot_style(self):
         rc('font', **{'family': 'serif', 'serif': ['Palatino']})
         rc('text', usetex=True)
+        #rc('text.latex', preamble=r'\usepackage[sc]{mathpazo}')
         SMALL_SIZE = 8
         MEDIUM_SIZE = 12
         BIGGER_SIZE = 20
@@ -31,7 +32,7 @@ class Visualizer:
         plt.title(f'{title}, Daily Return Over Time')
         plt.legend()
         plt.grid(True)
-        plt.savefig(filename)
+        plt.savefig(filename, format='eps')
         plt.close()
     
     def plot_GP(self, X_tf, Y_tf, f_mean, f_cov, title, filename):
@@ -104,7 +105,7 @@ class Visualizer:
         plt.savefig(filename)
         plt.close()
     
-    def plot_backtest_cml(self, baseline_cmls, sharpe_cmls, max_return_cmls, min_vol_cmls, y_label, title, filename):
+    def plot_backtest_cml(self, baseline_cmls, sharpe_cmls, max_return_cmls, min_vol_cmls, dynamic_cmls, y_label, title, filename):
         days = range(0, len(baseline_cmls))  # Create a list of days
         
         plt.figure(figsize=(12, 6))
@@ -112,6 +113,7 @@ class Visualizer:
         plt.plot(days, sharpe_cmls, label="Sharpe", color="blue")
         plt.plot(days, max_return_cmls, label="Max Return", color="green")
         plt.plot(days, min_vol_cmls, label="Min Volatility", color="red")
+        plt.plot(days, dynamic_cmls, label="Dynamic", color="orange")
         plt.xlabel('Day')
         plt.xlim(0, len(baseline_cmls))
         plt.xticks(range(0, len(baseline_cmls) + 1, max(1, len(baseline_cmls) // 10)))  # Set X-axis ticks

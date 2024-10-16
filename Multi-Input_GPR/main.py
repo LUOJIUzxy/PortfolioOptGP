@@ -575,20 +575,22 @@ if __name__ == "__main__":
     portfolio_returns_volatility, transaction_costs_volatility = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility, predicted_volatilities=volatilities_min_volatility)    
 
     optimal_weights_dynamic, volatilities_dynamic = portfolio.evaluate_portfolio(strategy_name='dynamic', max_volatility=max_volatility_threshold, min_return=min_return_threshold, prob_threshold=prob_threshold, isLogReturn=isLogReturn, cov=full_corr)
-    portfolio_returns_volatility, transaction_costs_volatility = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='dynamic', optimal_weights=optimal_weights_dynamic, predicted_volatilities=volatilities_dynamic)    
+    portfolio_returns_dynamic, transaction_costs_dynamic = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='dynamic', optimal_weights=optimal_weights_dynamic, predicted_volatilities=volatilities_dynamic)    
  
 
     portfolio_returns.insert(0, 0.0)
     portfolio_returns_sharpe.insert(0, 0.0)
     portfolio_returns_return.insert(0, 0.0)
     portfolio_returns_volatility.insert(0, 0.0)
+    portfolio_returns_dynamic.insert(0, 0.0)
 
     transaction_costs.insert(0, 0.0)
     transaction_costs_sharpe.insert(0, 0.0)
     transaction_costs_return.insert(0, 0.0)
     transaction_costs_volatility.insert(0, 0.0)
-    multiInputGPR.visualizer.plot_backtest_cml(portfolio_returns, portfolio_returns_sharpe, portfolio_returns_return, portfolio_returns_volatility, "Cumulative Returns", "Portfolio Comparison", "../plots/multi-input/portfolio_comparison.png")
-    multiInputGPR.visualizer.plot_backtest_cml(transaction_costs, transaction_costs_sharpe, transaction_costs_return, transaction_costs_volatility, "Cumulative Transaction Costs", "Transaction Costs Comparison", "../plots/multi-input/trx_costs_comparison.png")
+    transaction_costs_dynamic.insert(0, 0.0)
+    multiInputGPR.visualizer.plot_backtest_cml(portfolio_returns, portfolio_returns_sharpe, portfolio_returns_return, portfolio_returns_volatility, portfolio_returns_dynamic, "Cumulative Returns", "Portfolio Comparison", "../plots/multi-input/portfolio_comparison.png")
+    multiInputGPR.visualizer.plot_backtest_cml(transaction_costs, transaction_costs_sharpe, transaction_costs_return, transaction_costs_volatility, transaction_costs_dynamic, "Cumulative Transaction Costs", "Transaction Costs Comparison", "../plots/multi-input/trx_costs_comparison.png")
     
     plt.show()
 

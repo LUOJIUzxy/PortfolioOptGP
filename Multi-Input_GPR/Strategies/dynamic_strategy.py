@@ -21,7 +21,7 @@ class DynamicStrategy(Strategy):
     
     # Multivariate normal version
     # A should be previous time point, B should be current time point
-    def probability_A_greater_than_B_mvnorm(self, mu_A, cov_A, mu_B, cov_B, num_samples=1000):
+    def probability_A_greater_than_B_mvnorm(self, mu_A, cov_A, mu_B, cov_B, num_samples=10000):
         """
         Estimate the probability that A > B for two multivariate normal distributions A ~ N(mu_A, cov_A)
         and B ~ N(mu_B, cov_B) using Monte Carlo sampling.

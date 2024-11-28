@@ -19,6 +19,7 @@ class DataHandler:
         load_dotenv()
         api_token = os.getenv('API_TOKEN')
         if ticker == 'BTC':
+            print("Fetching BTC data")
             url = f'https://eodhd.com/api/eod/BTC-USD.CC?period={period}&api_token={api_token}&fmt=json&from={start_date}&to={end_date}'
         else:
             url = f'https://eodhd.com/api/eod/{ticker}.US?period={period}&api_token={api_token}&fmt=json&from={start_date}&to={end_date}'

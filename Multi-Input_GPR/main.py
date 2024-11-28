@@ -476,11 +476,12 @@ if __name__ == "__main__":
     test_end_date = '2024-05-17'
 
     ticker1 = 'JPM'
-    ticker2 = 'AAPL'
-    ticker3 = 'AMGN'
+    ticker2 = 'MSFT'
+    ticker3 = 'ETN'
     ticker4 = 'HLT'
-    ticker5 = 'COST'
-    assets = ['MSFT', 'TSLA', 'GOOGL', 'JNJ', 'XOM', 'PLD', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
+    ticker5 = 'LLY'
+    #assets = ['COST', 'AAPL', 'GOOGL', 'JNJ', 'XOM', 'PLD', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
+    assets = ['Brent_Oil', 'DXY', 'SP500', 'NasDaq100', 'BTC']
     portolio_assets = [ticker1, ticker2, ticker3, ticker4, ticker5]
 
     timeframes = ['d', 'w', 'm']

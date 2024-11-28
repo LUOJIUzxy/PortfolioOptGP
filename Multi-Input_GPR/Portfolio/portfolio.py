@@ -142,6 +142,7 @@ class Portfolio:
                 optimal_weights_daily = self.get_optimal_weights(strategy_name, max_volatility, min_return, prob_threshold, mu_A=None, cov_A=None, mu_B=np.array(daily_return), cov_B=cov_matrix, previous_weights=None)
             else:
                 # Get the optimal weights for the current day
+                # mu_A: previous day's returns, cov_A: previous day's covariance matrix, mu_B: predicted current day's returns, cov_B: predicted current day's covariance matrix, previous_weights: previous day's optimal weights
                 optimal_weights_daily = self.get_optimal_weights(strategy_name, max_volatility, min_return, prob_threshold, mu_A=np.array(daily_returns[-2]), cov_A=cov_matrixs[-2], mu_B=np.array(daily_return), cov_B=cov_matrix, previous_weights=optimal_weights[-1])
 
 

@@ -1,27 +1,100 @@
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import numpy as np
+from cycler import cycler
 
 class Visualizer:
     def __init__(self):
         self.setup_plot_style()
 
     def setup_plot_style(self):
+        # Font settings
         rc('font', **{'family': 'serif', 'serif': ['Palatino']})
         rc('text', usetex=True)
-        #rc('text.latex', preamble=r'\usepackage[sc]{mathpazo}')
+        rc('text.latex', preamble=r'\usepackage{mathpazo}')
+        
+        # Font sizes
         SMALL_SIZE = 8
         MEDIUM_SIZE = 12
         BIGGER_SIZE = 20
+        
+        # Apply font sizes
         rc('font', size=MEDIUM_SIZE)
         rc('axes', titlesize=BIGGER_SIZE)
         rc('axes', labelsize=BIGGER_SIZE)
         rc('xtick', labelsize=MEDIUM_SIZE)
-        rc('ytick', labelsize=BIGGER_SIZE)
+        rc('ytick', labelsize=MEDIUM_SIZE)
         rc('legend', fontsize=MEDIUM_SIZE)
         rc('figure', titlesize=MEDIUM_SIZE)
+        
+        # TUM colors from TUM LaTeX template
+        tum_colors = {
+            'TUMBlue': '#0065BD',
+            'line1': '#66c2a5',
+            'line2': '#fc8d62',
+            'line3': '#8da0cb',
+            'line4': '#e78ac3',
+            'line5': '#a6d854',
+            'TUMAccentBlue': '#64A0C8'
+        }
+        
+        # Set color cycle to match TUM corporate design
+        plt.rcParams['axes.prop_cycle'] = cycler(color=[
+            tum_colors['line1'],
+            tum_colors['line2'],
+            tum_colors['line3'],
+            tum_colors['line4'],
+            tum_colors['line5']
+        ])
+        
+        # Figure settings
+        plt.rcParams['figure.figsize'] = (10, 7)  # Default figure size
+        plt.rcParams['figure.dpi'] = 100  # Screen display DPI
+        plt.rcParams['savefig.dpi'] = 300  # Saved figure DPI
+        plt.rcParams['figure.constrained_layout.use'] = True  # Better layout 
+        
+        # Axes settings
+        plt.rcParams['axes.linewidth'] = 1.5
+        plt.rcParams['lines.markersize'] = 8     # Size of the circular markers
+        plt.rcParams['lines.markeredgewidth'] = 1 # Edge width of markers
+        
+        # Legend settings
+        plt.rcParams['legend.frameon'] = True     # Legend box is visible
+        plt.rcParams['legend.framealpha'] = 1.0   # Fully opaque legend box
+        plt.rcParams['legend.edgecolor'] = 'gray' # Light gray edge for legend box
+        
+        plt.rcParams['axes.grid'] = False
+        plt.rcParams['grid.alpha'] = 0.3
+        plt.rcParams['grid.linestyle'] = '--'
+        
+        # Tick settings
+        plt.rcParams['xtick.major.width'] = 1.0
+        plt.rcParams['ytick.major.width'] = 1.0
+        plt.rcParams['xtick.minor.width'] = 0.6
+        plt.rcParams['ytick.minor.width'] = 0.6
+        plt.rcParams['xtick.direction'] = 'in'
+        plt.rcParams['ytick.direction'] = 'in'
+        
+        # Legend settings
+        plt.rcParams['legend.frameon'] = True
+        plt.rcParams['legend.framealpha'] = 0.9
+        plt.rcParams['legend.edgecolor'] = 'none'
+        plt.rcParams['legend.fancybox'] = True
+        
+        # Save settings
+        plt.rcParams['savefig.format'] = 'pdf'  # Default save format
+        plt.rcParams['savefig.bbox'] = 'tight'
+        plt.rcParams['savefig.transparent'] = True
+        
+        # Additional LaTeX settings
+        # plt.rcParams['text.latex.preview'] = True
+        # plt.rcParams['axes.unicode_minus'] = False  # Proper minus signs
+        
+        return tum_colors 
 
     def plot_data(self, X_tf, Y_tf, dates, title, mean, std, filename):
+        tum_colors = self.setup_plot_style()
+
         dates_formatted = dates.dt.strftime(f'%y-%m-%d')
         Y_tf = Y_tf * std + mean
         plt.figure(figsize=(12, 6))
@@ -36,15 +109,18 @@ class Visualizer:
         plt.close()
     
     def plot_GP(self, X_tf, Y_tf, f_mean, f_cov, title, filename):
+        tum_colors = self.setup_plot_style()
+        
+
         f_lower = f_mean - 1.96 * f_cov
         f_upper = f_mean + 1.96 * f_cov
 
 
         plt.figure(figsize=(12, 6))
         plt.plot(X_tf, Y_tf, "kx", mew=2, label="Training data")
-        plt.plot(X_tf, f_mean, color="C0", label="Predicted Mean")
-        plt.plot(X_tf, f_lower, "--", color="C1", label="95% confidence")
-        plt.plot(X_tf, f_upper, "--", color="C1")
+        plt.plot(X_tf, f_mean, color=tum_colors['TUMAccentBlue'], label="Predicted Mean")
+        plt.plot(X_tf, f_lower, "--", color=tum_colors['TUMBlue'], label="95% confidence")
+        plt.plot(X_tf, f_upper, "--", color=tum_colors['TUMBlue'])
         plt.fill_between(X_tf[:, 0], f_lower[:, 0], f_upper[:, 0], color="C0", alpha=0.2)
         plt.xlabel('Date')
         plt.ylabel('APPL Close Price')
@@ -55,6 +131,8 @@ class Visualizer:
         plt.close()
     
     def plot_GP_with_removed(self, X, Y_actual, f_mean, f_cov, X_removed, Y_removed, title, filename):
+        tum_colors = self.setup_plot_style()
+
         plt.figure(figsize=(12, 6))
         X = X.numpy() if hasattr(X, 'numpy') else X
         Y_actual = Y_actual.numpy() if hasattr(Y_actual, 'numpy') else Y_actual
@@ -78,6 +156,8 @@ class Visualizer:
         plt.close()
 
     def plot_pred_data(self, X_daily_tf, Y_daily_tf, X_combined_future, f_mean, f_lower, f_upper, y_mean, y_lower, y_upper, title, mean, std, filename):
+        tum_colors = self.setup_plot_style()
+
         Y_daily_tf = Y_daily_tf * std + mean
         f_mean = f_mean * std + mean
         f_lower = f_lower * std + mean
@@ -106,17 +186,19 @@ class Visualizer:
         plt.close()
     
     def plot_backtest_cml(self, baseline_cmls, sharpe_cmls, max_return_cmls, min_vol_cmls, dynamic_cmls, y_label, title, filename):
+        tum_colors = self.setup_plot_style()
+
         days = range(0, len(baseline_cmls))  # Create a list of days
         
-        plt.figure(figsize=(12, 6))
-        plt.plot(days, baseline_cmls, label="Baseline", color="black")
-        plt.plot(days, sharpe_cmls, label="Sharpe", color="blue")
-        plt.plot(days, max_return_cmls, label="Max Return", color="green")
-        plt.plot(days, min_vol_cmls, label="Min Volatility", color="red")
-        plt.plot(days, dynamic_cmls, label="Dynamic", color="orange")
+        plt.figure(figsize=(10, 7))
+        plt.plot(days, baseline_cmls, "*--", label="Baseline", color=tum_colors['line1'])
+        plt.plot(days, sharpe_cmls, "o--", label="Sharpe", color=tum_colors['line2'])
+        plt.plot(days, max_return_cmls, "o--", label="Max Return", color=tum_colors['line3'])
+        plt.plot(days, min_vol_cmls, "o--", label="Min Volatility", color=tum_colors['line4'])
+        plt.plot(days, dynamic_cmls, "o--", label="Dynamic", color=tum_colors['line5'])
         plt.xlabel('Day')
-        plt.xlim(0, len(baseline_cmls))
-        plt.xticks(range(0, len(baseline_cmls) + 1, max(1, len(baseline_cmls) // 10)))  # Set X-axis ticks
+        plt.xlim(-0.1, len(baseline_cmls) - 0.8)  # Set X-axis limits
+        plt.xticks(range(0, len(baseline_cmls), max(1, len(baseline_cmls) // 10)))  # Set X-axis ticks
         plt.ylabel(y_label)
         plt.title(title)
         plt.legend()

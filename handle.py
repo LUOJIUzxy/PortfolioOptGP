@@ -80,3 +80,39 @@ input_file = './Stocks/Index/RUT2000/RUT2000.csv'
 convert_csv(input_file, output_file)
 sort_csv(output_file)
 # %%
+import pandas as pd
+
+# Read both CSV files
+jpm_df = pd.read_csv('./Stocks/JPM/JPM_us_d.csv')
+btc_df = pd.read_csv('./Stocks/BTC/BTC_us_d.csv')
+
+# Convert date columns to datetime
+jpm_df['date'] = pd.to_datetime(jpm_df['date'])
+btc_df['date'] = pd.to_datetime(btc_df['date'])
+
+# Get the date range from JPM data
+start_date = jpm_df['date'].min()
+end_date = jpm_df['date'].max()
+
+# Filter BTC data to match JPM's date range
+filtered_btc = btc_df[(btc_df['date'] >= start_date) & (btc_df['date'] <= end_date)]
+
+# Save the filtered BTC data back to CSV
+filtered_btc.to_csv('./Stocks/BTC/BTC_us_d.csv', index=False)
+# %%
+import pandas as pd
+
+# Read both CSV files
+jpm_df = pd.read_csv('Stocks/JPM/JPM_us_d.csv')
+btc_df = pd.read_csv('Stocks/BTC/BTC_us_d.csv')
+
+# Convert date columns to datetime
+jpm_df['date'] = pd.to_datetime(jpm_df['date'])
+btc_df['date'] = pd.to_datetime(btc_df['date'])
+
+# Filter BTC data to keep only dates that exist in JPM data
+filtered_btc = btc_df[btc_df['date'].isin(jpm_df['date'])]
+
+# Save the filtered BTC data back to CSV
+filtered_btc.to_csv('Stocks/BTC/BTC_us_d.csv', index=False)
+# %%

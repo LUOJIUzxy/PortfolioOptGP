@@ -43,6 +43,7 @@ class DynamicStrategy(Strategy):
         cov_B = np.array(cov_B)
 
         # Generate samples from the multivariate normal distributions
+        # Incorporate covariance matrices，not just diagonal matrices(correlation as well)
         samples_A = multivariate_normal.rvs(mean=mu_A, cov=cov_A, size=num_samples)
         samples_B = multivariate_normal.rvs(mean=mu_B, cov=cov_B, size=num_samples)
 
@@ -77,8 +78,10 @@ class DynamicStrategy(Strategy):
             # If it is the first time point, optimize the portfolio to maximize returns
             optimal_weights = optimizer.maximize_returns(max_volatility)
         else:
-            prob = self.probability_A_greater_than_B_mvnorm(mu_A, cov_A, mu_B, cov_B)
-            if prob > prob_threshold:
+            # mu_A: previous day's returns, cov_A: previous day's covariance matrix, mu_B: predicted current day's returns, cov_B: predicted current day's covariance matrix, previous_weights: previous day's optimal weights
+            # prob: 
+            prob = self.probability_A_greater_than_B_mvnorm(mu_B, cov_B, mu_A, cov_A, num_samples=10000)
+            if prob >= prob_threshold:
                 print("Probability is greater than threshold, optimizing for returns")
                 optimal_weights = optimizer.maximize_returns(max_volatility)
             else:

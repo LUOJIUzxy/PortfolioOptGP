@@ -76,7 +76,7 @@ class Portfolio:
 
         # Optimize portfolio weights using the strategy
         if strategy_name == 'dynamic':
-            optimal_weights = strategy.optimize(self.optimizer, max_volatility, prob_threshold, mu_A, cov_A, mu_B, cov_B, previous_weights)
+            optimal_weights = strategy.optimize(self.optimizer, max_volatility, prob_threshold, mu_A, cov_A, mu_B, cov_B, previous_weights, broker_fee=self.broker_fee)
         else:
             optimal_weights = strategy.optimize(self.optimizer,  max_volatility, min_return)
 

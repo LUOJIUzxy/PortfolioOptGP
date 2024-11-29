@@ -170,7 +170,8 @@ class Optimizer:
         #regulization = self.regularization(w)
 
         # L1/L2 regularization + transaction costs
-        regulization = self.total_penalty(w)
+        # regulization = self.total_penalty(w)
+        regulization = self.regularization(w)
         return portfolio_volatility + regulization
     
     def maximize_returns(self, max_volatility):
@@ -193,6 +194,10 @@ class Optimizer:
         return optimized_weights
 
     def minimize_uncertainty(self, min_return):
+        # min_return is the minimum return threshold
+        # If the portfolio return is less than min_return, the penalty will be high
+        # If the portfolio return is greater than min_return, the penalty will be low
+
         return_constraint = {'type': 'ineq', 'fun': lambda w: np.dot(self.mu, w) - min_return}
         constraints = [self.constraints, return_constraint]
         

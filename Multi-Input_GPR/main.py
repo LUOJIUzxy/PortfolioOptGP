@@ -279,6 +279,9 @@ class MultiInputGPR:
             elif feature == "SP500" or feature == "NasDaq100":
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks/index", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
                 X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks/Index", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
+            elif feature == "BTC":
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
             else:
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
                 X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
@@ -371,6 +374,9 @@ class MultiInputGPR:
             elif feature == "SP500" or feature == "NasDaq100":
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks/index", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
                 X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks/Index", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
+            elif feature == "BTC":
+                X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
             else:
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
                 X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
@@ -419,6 +425,9 @@ class MultiInputGPR:
                     
                     model = ModelTrainer.train_model(model)
                 else:
+                    # Allow the likelihood variance to be trainable
+                    # This is to prevent overfitting
+                    # Train four times with different starting variances: 1e-5, 1e-3, 1e-1, 1.0
                     model = ModelTrainer.train_likelihood(X_full[:i], Y_AAPL_full_tf[:i], composite_kernel)
 
            
@@ -448,7 +457,7 @@ class MultiInputGPR:
             actual_returns.append(Y_actual[-1])
 
         # Return two-day predictions
-        return [f_means, f_vars, actual_returns]
+        return [f_means, f_vars, actual_returns, Y_AAPL_tf]
 
 
     def run_arima(self) -> None:
@@ -481,7 +490,7 @@ if __name__ == "__main__":
     ticker4 = 'HLT'
     ticker5 = 'LLY'
     #assets = ['COST', 'AAPL', 'GOOGL', 'JNJ', 'XOM', 'PLD', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
-    assets = ['Brent_Oil', 'DXY', 'SP500', 'NasDaq100', 'BTC']
+    assets = ['Brent_Oil', 'DXY', 'SP500', 'NasDaq100', 'BTC', 'XAU_USD' ]
     portolio_assets = [ticker1, ticker2, ticker3, ticker4, ticker5]
 
     timeframes = ['d', 'w', 'm']
@@ -496,8 +505,10 @@ if __name__ == "__main__":
     risk_free_rate = 0.01 / 252  
 
     max_volatility_threshold = 0.02  
-    min_return_threshold = 0.005
+    min_return_threshold = 0.001
     prob_threshold = 0.5
+    prob_threshold_larger = 0.8
+    prob_threshold_smaller = 0.2
 
     l1 = 0.01
     l2 = 0.00
@@ -538,7 +549,7 @@ if __name__ == "__main__":
             isFixedLikelihood=False
         )
         #predicted = multiInputGPR.run_step_3()
-        predicted = multiInputGPR.run_step_3()
+        predicted = multiInputGPR.run_step_4()
         
         # [ [asset1 over 5 days], [asset2 over 5 days], ...]
         predicted_values.append(predicted[0])

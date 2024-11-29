@@ -58,36 +58,76 @@ class DynamicStrategy(Strategy):
 
     # (mu_A is None && prev_optimal_weights is None) if it is the first time point
     # (mu_A != None && prev_optimal_weights == None) cannot happen at the same time
-    def optimize(self, optimizer: Optimizer, max_volatility, prob_threshold, mu_A, cov_A, mu_B, cov_B, prev_optimal_weights=None):
-        """
-        Optimize portfolio to keep portfolio allocation contant for all time points.
+    # def optimize(self, optimizer: Optimizer, max_volatility, prob_threshold, mu_A, cov_A, mu_B, cov_B, prev_optimal_weights=None):
+    #     """
+    #     Optimize portfolio to keep portfolio allocation contant for all time points.
         
-        :param optimizer: Optimizer instance for portfolio optimization.
-        :param strategy_name: The name of the strategy being applied.
-        :param max_volatility: Maximum volatility constraint.
-        :param min_return: Minimum return constraint.
-        :return: Optimal portfolio weights.
-        """
-        # print("mu_A: ", mu_A)
-        # print("cov_A: ", cov_A)
-        # print("mu_B: ", mu_B)
-        # print("cov_B: ", cov_B)
-        # print("prev_optimal_weights: ", prev_optimal_weights)
-        # print("probability threshold: ", prob_threshold)
+    #     :param optimizer: Optimizer instance for portfolio optimization.
+    #     :param strategy_name: The name of the strategy being applied.
+    #     :param max_volatility: Maximum volatility constraint.
+    #     :param min_return: Minimum return constraint.
+    #     :return: Optimal portfolio weights.
+    #     """
+    #     # print("mu_A: ", mu_A)
+    #     # print("cov_A: ", cov_A)
+    #     # print("mu_B: ", mu_B)
+    #     # print("cov_B: ", cov_B)
+    #     # print("prev_optimal_weights: ", prev_optimal_weights)
+    #     # print("probability threshold: ", prob_threshold)
+    #     if mu_A is None:
+    #         # If it is the first time point, optimize the portfolio to maximize returns
+    #         optimal_weights = optimizer.maximize_returns(max_volatility)
+    #     else:
+    #         # mu_A: previous day's returns, cov_A: previous day's covariance matrix, mu_B: predicted current day's returns, cov_B: predicted current day's covariance matrix, previous_weights: previous day's optimal weights
+    #         # prob: 
+    #         prob = self.probability_A_greater_than_B_mvnorm(mu_B, cov_B, mu_A, cov_A, num_samples=10000)
+    #         if prob >= prob_threshold:
+    #             print("Probability is greater than threshold, optimizing for returns")
+    #             optimal_weights = optimizer.maximize_returns(max_volatility)
+    #         else:
+    #             # optimal weights stay the same as the previous time point
+    #             print("Probability is less than threshold, keeping the same weights as the previous time point")
+    #             optimal_weights = prev_optimal_weights
+
+    #     return optimal_weights
+        
+    def optimize(self, optimizer: Optimizer, max_volatility, min_return, mu_A, cov_A, mu_B, cov_B, prev_optimal_weights=None, broker_fee=0.001):
+        
         if mu_A is None:
-            # If it is the first time point, optimize the portfolio to maximize returns
+            print("Allocate the first day")
+            # optimal_weights = optimizer.minimize_uncertainty(0.0)
             optimal_weights = optimizer.maximize_returns(max_volatility)
+            return optimal_weights
+            # return np.array([0.2, 0.2, 0.2, 0.2, 0.2])
         else:
-            # mu_A: previous day's returns, cov_A: previous day's covariance matrix, mu_B: predicted current day's returns, cov_B: predicted current day's covariance matrix, previous_weights: previous day's optimal weights
-            # prob: 
-            prob = self.probability_A_greater_than_B_mvnorm(mu_B, cov_B, mu_A, cov_A, num_samples=10000)
-            if prob >= prob_threshold:
-                print("Probability is greater than threshold, optimizing for returns")
+            mu_A = np.array(mu_A)
+            print("mu_A: ", mu_A)
+            mu_B = np.array(mu_B)
+            print("mu_B: ", mu_B)
+            prev_optimal_weights = np.array(prev_optimal_weights)
+            print("prev_optimal_weights: ", prev_optimal_weights)
+            
+            expected_return_A = np.dot(mu_A, prev_optimal_weights)
+            expected_return_B = np.dot(mu_B, prev_optimal_weights)
+
+            if expected_return_A > expected_return_B:
+                # Since with the same allocation weights, the next day's return is decreasing, so we need to maximize the returns
+                print("Expected return A is greater than expected return B, maximizing returns")
                 optimal_weights = optimizer.maximize_returns(max_volatility)
             else:
-                # optimal weights stay the same as the previous time point
-                print("Probability is less than threshold, keeping the same weights as the previous time point")
-                optimal_weights = prev_optimal_weights
+
+                # Since with the same allocation weights, the next day's return is increasing, so we need to be more conservative, minimize the volatility
+                print("Expected return A is less than expected return B, minimizing uncertainty")
+                optimal_weights = optimizer.minimize_uncertainty(expected_return_B - expected_return_A)
+                # Incorporate transaction costs to the proposed weights from minimize_uncertainty startegy here
+                # The transaction costs are based on the weights of the previous time point
+                transaction_costs =  np.sum(broker_fee * np.abs(optimal_weights - prev_optimal_weights))
+                realized_return = expected_return_B - expected_return_A - transaction_costs
+                if realized_return > 0:
+                    print("Realized return is greater than 0, keeping the weights")
+                    pass
+                else:
+                    print("Realized return is less than 0, reverting to previous weights")
+                    optimal_weights = prev_optimal_weights
 
         return optimal_weights
-

@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 from matplotlib import rc
 import numpy as np
 from cycler import cycler
+import itertools
+
 
 class Visualizer:
     def __init__(self):
@@ -19,13 +21,13 @@ class Visualizer:
         BIGGER_SIZE = 20
         
         # Apply font sizes
-        rc('font', size=MEDIUM_SIZE)
+        rc('font', size=BIGGER_SIZE)
         rc('axes', titlesize=BIGGER_SIZE)
         rc('axes', labelsize=BIGGER_SIZE)
-        rc('xtick', labelsize=MEDIUM_SIZE)
-        rc('ytick', labelsize=MEDIUM_SIZE)
-        rc('legend', fontsize=MEDIUM_SIZE)
-        rc('figure', titlesize=MEDIUM_SIZE)
+        rc('xtick', labelsize=BIGGER_SIZE)
+        rc('ytick', labelsize=BIGGER_SIZE)
+        rc('legend', fontsize=BIGGER_SIZE)
+        rc('figure', titlesize=BIGGER_SIZE)
         
         # TUM colors from TUM LaTeX template
         tum_colors = {
@@ -205,3 +207,55 @@ class Visualizer:
         plt.grid(True)
         plt.savefig(filename)
         plt.close()
+
+
+    def plot_strategy_returns(self, returns, title, filename):
+        tum_colors = self.setup_plot_style()
+
+        plt.figure(figsize=(10, 7))
+        plt.plot(returns, label=title)
+        plt.xlabel('Day')
+        plt.ylabel('Cumulative Return')
+        plt.title(title)
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(filename)
+        plt.close()
+        
+
+    def plot_asset_allocations(self, allocations, asset_names, time_points, filename_base):
+        tum_colors = self.setup_plot_style()
+
+        # Assign colors to assets
+        asset_colors = [
+            tum_colors['line1'],
+            tum_colors['line2'],
+            tum_colors['line3'],
+            tum_colors['line4'],
+            tum_colors['line5']
+        ]
+        # In case there are more than 5 assets, repeat colors
+        if len(asset_names) > len(asset_colors):
+            asset_colors = list(itertools.islice(itertools.cycle(asset_colors), len(asset_names)))
+
+        for strategy_name, strategy_allocations in allocations.items():
+            # strategy_allocations is a 2D array: (time_points x assets)
+            n_time_points = len(time_points)
+            fig, axs = plt.subplots(1, n_time_points, figsize=(n_time_points * 4, 4))
+
+            # Ensure axs is iterable
+            if n_time_points == 1:
+                axs = [axs]
+            
+            for idx, (ax, time_point) in enumerate(zip(axs, time_points)):
+                # Get allocations for this time point
+                allocation = strategy_allocations[idx, :]
+                ax.pie(allocation, labels=asset_names, colors=asset_colors, autopct='%1.1f%%', startangle=90)
+                ax.set_title(f'Time: {time_point}')
+                # Equal aspect ratio ensures that pie is drawn as a circle.
+                ax.axis('equal')  
+
+            fig.suptitle(f'Asset Allocation - {strategy_name}')
+            plt.tight_layout()
+            plt.savefig(f'{filename_base}_{strategy_name}.pdf')
+            plt.close()

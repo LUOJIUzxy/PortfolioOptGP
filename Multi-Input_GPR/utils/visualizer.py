@@ -223,8 +223,11 @@ class Visualizer:
         plt.close()
         
 
-    def plot_asset_allocations(self, allocations, asset_names, time_points, filename_base):
+    def plot_asset_allocations(self, allocations, asset_names, time_points, strategy_name, filename_base):
         tum_colors = self.setup_plot_style()
+
+        # Ensure allocations is a NumPy array
+        allocations = np.array(allocations)
 
         # Assign colors to assets
         asset_colors = [
@@ -238,24 +241,44 @@ class Visualizer:
         if len(asset_names) > len(asset_colors):
             asset_colors = list(itertools.islice(itertools.cycle(asset_colors), len(asset_names)))
 
-        for strategy_name, strategy_allocations in allocations.items():
-            # strategy_allocations is a 2D array: (time_points x assets)
-            n_time_points = len(time_points)
-            fig, axs = plt.subplots(1, n_time_points, figsize=(n_time_points * 4, 4))
+        n_time_points = len(time_points)
+        fig, axs = plt.subplots(1, n_time_points, figsize=(n_time_points * 4, 4))
 
-            # Ensure axs is iterable
-            if n_time_points == 1:
-                axs = [axs]
+        # Ensure axs is iterable
+        if n_time_points == 1:
+            axs = [axs]
+        
+        for idx, (ax, time_point) in enumerate(zip(axs, time_points)):
+            # Get allocations for this time point
+            allocation = allocations[idx, :]
+
+            # Create custom legend labels with percentages
             
-            for idx, (ax, time_point) in enumerate(zip(axs, time_points)):
-                # Get allocations for this time point
-                allocation = strategy_allocations[idx, :]
-                ax.pie(allocation, labels=asset_names, colors=asset_colors, autopct='%1.1f%%', startangle=90)
-                ax.set_title(f'Time: {time_point}')
-                # Equal aspect ratio ensures that pie is drawn as a circle.
-                ax.axis('equal')  
+            legend_labels = [f'{name} ({allocation[i]*100:.1f}%)' for i, name in enumerate(asset_names)]
+            
+            
+            # Function to format percentages, hide small slices
+            def autopct_func(pct):
+                return ('%1.1f%%' % pct) if pct > 5 else ''
 
-            fig.suptitle(f'Asset Allocation - {strategy_name}')
-            plt.tight_layout()
-            plt.savefig(f'{filename_base}_{strategy_name}.pdf')
-            plt.close()
+            wedges, texts, autotexts = ax.pie(
+                allocation,
+                colors=asset_colors,
+                autopct=autopct_func,
+                startangle=90
+            )
+
+            # Add legend to each subplot
+            # ax.legend(wedges, legend_labels, loc='upper right', bbox_to_anchor=(1, 1))
+
+            ax.set_title(f'Day {time_point}')
+            # Equal aspect ratio ensures that pie is drawn as a circle.
+            ax.axis('equal')  
+
+        # Add a legend outside the subplots
+        fig.legend(wedges, asset_names, loc='center right', bbox_to_anchor=(1.05, 0.5))
+        plt.subplots_adjust(right=0.85)  # Adjust the right boundary to make room for the legend
+
+        fig.suptitle(f'Asset Allocation - {strategy_name}')
+        plt.savefig(filename_base, bbox_inches='tight')
+        plt.close()

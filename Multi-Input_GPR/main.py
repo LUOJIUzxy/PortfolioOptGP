@@ -574,19 +574,26 @@ if __name__ == "__main__":
     portfolio = Portfolio(portolio_assets, predicted_values, predicted_variances, optimizer, risk_free_rate=risk_free_rate, lambda_=0.01, broker_fee=broker_fee)
     
     # isLogReturn = False
+    time_points = [1, 2, 3, 4, 5]
     optimal_weights, volatilities = portfolio.evaluate_portfolio(strategy_name='constant', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn, cov=full_corr)
+    multiInputGPR.visualizer.plot_asset_allocations(optimal_weights, portolio_assets, time_points, "Constant", "../plots/multi-input/asset_allocations_constant.png")
+    # multiInputGPR.visualizer.plot_strategy_weights(optimal_weights, "Constant", "../plots/multi-input/strategy_weights_constant.png")
     portfolio_returns, transaction_costs = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='constant', optimal_weights=optimal_weights, predicted_volatilities=volatilities)
     
     optimal_weights_max_sharpe, volatilities_max_sharpe = portfolio.evaluate_portfolio(strategy_name='sharpe', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn, cov=full_corr)
+    multiInputGPR.visualizer.plot_asset_allocations(optimal_weights_max_sharpe, portolio_assets, time_points, "Sharpe", "../plots/multi-input/asset_allocations_sharpe.png")
     portfolio_returns_sharpe, transaction_costs_sharpe = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='sharpe', optimal_weights=optimal_weights_max_sharpe, predicted_volatilities=volatilities_max_sharpe)
     
     optimal_weights_max_return, volatilities_max_return = portfolio.evaluate_portfolio(strategy_name='max_return', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn, cov=full_corr)
+    multiInputGPR.visualizer.plot_asset_allocations(optimal_weights_max_return, portolio_assets, time_points, "Max Return", "../plots/multi-input/asset_allocations_max_return.png")
     portfolio_returns_return, transaction_costs_return = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='max_return', optimal_weights=optimal_weights_max_return, predicted_volatilities=volatilities_max_return)
    
     optimal_weights_min_volatility, volatilities_min_volatility = portfolio.evaluate_portfolio(strategy_name='min_volatility', max_volatility=max_volatility_threshold, min_return=min_return_threshold, isLogReturn=isLogReturn, cov=full_corr)
+    multiInputGPR.visualizer.plot_asset_allocations(optimal_weights_min_volatility, portolio_assets, time_points, "Min Volatility", "../plots/multi-input/asset_allocations_min_volatility.png")
     portfolio_returns_volatility, transaction_costs_volatility = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='min_volatility', optimal_weights=optimal_weights_min_volatility, predicted_volatilities=volatilities_min_volatility)    
 
     optimal_weights_dynamic, volatilities_dynamic = portfolio.evaluate_portfolio(strategy_name='dynamic', max_volatility=max_volatility_threshold, min_return=min_return_threshold, prob_threshold=prob_threshold, isLogReturn=isLogReturn, cov=full_corr)
+    multiInputGPR.visualizer.plot_asset_allocations(optimal_weights_dynamic, portolio_assets, time_points, "Dynamic", "../plots/multi-input/asset_allocations_dynamic.png")
     portfolio_returns_dynamic, transaction_costs_dynamic = portfolio.backtest_portfolio(historical_returns=predicted_Y_values, strategy_name='dynamic', optimal_weights=optimal_weights_dynamic, predicted_volatilities=volatilities_dynamic)    
  
 

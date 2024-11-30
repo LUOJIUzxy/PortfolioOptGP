@@ -251,12 +251,14 @@ class MultiInputGPR:
         print(f"Mean Squared Error (all points): {mse_all:.4f}")
         print(f"Mean Squared Error (removed points): {mse_removed:.4f}")
        
-
+        X_AAPL_tf = X_AAPL_tf * x_std + x_mean
+        X_removed[:, -1] = X_removed[:, -1] * x_std + x_mean
         # Plot results
+
         self.visualizer.plot_GP_with_removed(
             X_AAPL_tf, Y_actual, f_mean, f_cov, 
             X_removed[:, -1], Y_removed_actual,  # Assuming the last column of X is the date
-            title=f"{self.ticker} / Day, with {self.removal_percentage * 100} percentage points removed",
+            title=f"{self.ticker}, with {self.removal_percentage * 100} percentage points removed",
             filename=f'../plots/multi-input/predicted_{self.ticker}_with_removed.png'
         )
 
@@ -477,6 +479,36 @@ class MultiInputGPR:
         mse = mean_squared_error(df_test, forecast)
         print(f"Mean Squared Error: {mse:.4f}")
 
+
+# if __name__ == "__main__":
+#     # Define your parameters
+#     train_start_date = '2024-02-10'
+#     train_end_date = '2024-05-10'
+#     test_start_date = '2024-05-13'
+#     test_end_date = '2024-05-17'
+    
+#     ticker = 'MSFT'  # Example ticker
+#     assets = ['Brent_Oil', 'DXY', 'BTC', 'XAU_USD']
+    
+#     # Initialize the MultiInputGPR instance
+#     multiInputGPR = MultiInputGPR(
+#         ticker=ticker, 
+#         features=assets,
+#         train_start_date=train_start_date, 
+#         train_end_date=train_end_date, 
+#         test_start_date=test_start_date,
+#         test_end_date=test_end_date,
+#         kernel_combinations=[(gpflow.kernels.Exponential, gpflow.kernels.Exponential)],
+#         window_size=3,
+#         kernels=[gpflow.kernels.Exponential()],
+#         threshold=0.30,
+#         predict_Y='close',
+#         removal_percentage=0.1,
+#         isFixedLikelihood=False
+#     )
+    
+#     # Call the run_step_2 method
+#     multiInputGPR.run_step_2()
 
 if __name__ == "__main__":
     train_start_date = '2024-02-10'

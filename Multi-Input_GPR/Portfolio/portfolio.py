@@ -185,11 +185,6 @@ class Portfolio:
         # Step 3: Calculate portfolio returns for each day using the Return class
         portfolio_returns, transaction_costs = historical_return_calculator.calculate_portfolio_returns()
 
-        # Step 4: Calculate portfolio volatility for each day using the Volatility class
-        #portfolio_volatility = historical_volatility_calculator.calculate_portfolio_volatility()
-        
-        # portfolio_variances = [np.sum(np.square(asset_variance_list)) for asset_variance_list in predicted_volatilities]
-        # diag = np.diag(np.array(portfolio_variances))  # Diagonal covariance matrix
         
         sharpe_ratios = []
         return_cmls = []

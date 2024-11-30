@@ -137,6 +137,8 @@ class Visualizer:
 
         plt.figure(figsize=(12, 6))
         X = X.numpy() if hasattr(X, 'numpy') else X
+
+
         Y_actual = Y_actual.numpy() if hasattr(Y_actual, 'numpy') else Y_actual
         f_mean = f_mean.numpy() if hasattr(f_mean, 'numpy') else f_mean
         f_cov = f_cov.numpy() if hasattr(f_cov, 'numpy') else f_cov
@@ -282,3 +284,25 @@ class Visualizer:
         fig.suptitle(f'Asset Allocation - {strategy_name}')
         plt.savefig(filename_base, bbox_inches='tight')
         plt.close()
+
+
+    def plot_arim_comparison():
+        # Sample data for demonstration
+        days = np.arange(1, 6)
+        actual_values = [180, 182, 183, 185, 184]
+        gpr_predictions = [181, 182.5, 183.5, 184.5, 185]
+        arima_predictions = [180.5, 181.5, 182.5, 183, 183.5]
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(days, actual_values, label='Actual Values', marker='o')
+        plt.plot(days, gpr_predictions, label='GPR Predictions', marker='x')
+        plt.plot(days, arima_predictions, label='ARIMA Predictions', marker='^')
+
+        plt.xlabel('Day')
+        plt.ylabel('Value')
+        plt.title('Comparison of Predicted Values from GPR and ARIMA Models')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig('prediction_comparison.png', dpi=300)
+        plt.show()
+

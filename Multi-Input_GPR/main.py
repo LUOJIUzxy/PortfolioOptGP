@@ -518,9 +518,9 @@ if __name__ == "__main__":
 
     ticker1 = 'JPM'
     ticker2 = 'MSFT'
-    ticker3 = 'ETN'
+    ticker3 = 'BA'
     ticker4 = 'HLT'
-    ticker5 = 'LLY'
+    ticker5 = 'JNJ'
     #assets = ['COST', 'AAPL', 'GOOGL', 'JNJ', 'XOM', 'PLD', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
     assets = ['Brent_Oil', 'DXY', 'SP500', 'NasDaq100', 'BTC', 'XAU_USD' ]
     portolio_assets = [ticker1, ticker2, ticker3, ticker4, ticker5]
@@ -580,8 +580,7 @@ if __name__ == "__main__":
             removal_percentage=0.1,
             isFixedLikelihood=False
         )
-        #predicted = multiInputGPR.run_step_3()
-        predicted = multiInputGPR.run_step_4()
+        predicted = multiInputGPR.run_step_3()
         
         # [ [asset1 over 5 days], [asset2 over 5 days], ...]
         predicted_values.append(predicted[0])
@@ -644,4 +643,3 @@ if __name__ == "__main__":
     multiInputGPR.visualizer.plot_backtest_cml(transaction_costs, transaction_costs_sharpe, transaction_costs_return, transaction_costs_volatility, transaction_costs_dynamic, "Cumulative Transaction Costs", "Transaction Costs Comparison", "../plots/multi-input/trx_costs_comparison.png")
     
     plt.show()
-

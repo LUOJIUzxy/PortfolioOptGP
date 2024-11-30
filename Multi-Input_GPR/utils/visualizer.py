@@ -286,7 +286,8 @@ class Visualizer:
         plt.close()
 
 
-    def plot_arim_comparison():
+    def plot_arim_comparison(self):
+        tum_colors = self.setup_plot_style()
         # Sample data for demonstration
         days = np.arange(1, 6)
         actual_values = [180, 182, 183, 185, 184]
@@ -294,15 +295,17 @@ class Visualizer:
         arima_predictions = [180.5, 181.5, 182.5, 183, 183.5]
 
         plt.figure(figsize=(10, 6))
-        plt.plot(days, actual_values, label='Actual Values', marker='o')
-        plt.plot(days, gpr_predictions, label='GPR Predictions', marker='x')
-        plt.plot(days, arima_predictions, label='ARIMA Predictions', marker='^')
-
+        plt.plot(days, actual_values, marker='o', linestyle='-', label='Actual Values', color=tum_colors['line1'])
+        plt.plot(days, gpr_predictions, marker='x', linestyle='--', label='GPR Predictions', color=tum_colors['line2'])
+        plt.plot(days, arima_predictions, marker='^', linestyle='-.', label='ARIMA Predictions', color=tum_colors['line3'])
+        
         plt.xlabel('Day')
-        plt.ylabel('Value')
+        plt.ylabel('AAPL Stock Close Price')
         plt.title('Comparison of Predicted Values from GPR and ARIMA Models')
         plt.legend()
         plt.grid(True)
-        plt.savefig('prediction_comparison.png', dpi=300)
-        plt.show()
+        plt.savefig('../plots/multi-input/prediction_comparison.png', dpi=300)
+        
+
+
 

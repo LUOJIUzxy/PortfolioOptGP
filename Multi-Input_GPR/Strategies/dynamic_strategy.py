@@ -110,7 +110,7 @@ class DynamicStrategy(Strategy):
             expected_return_A = np.dot(mu_A, prev_optimal_weights)
             expected_return_B = np.dot(mu_B, prev_optimal_weights)
 
-            if expected_return_A > expected_return_B:
+            if expected_return_A < expected_return_B:
                 # Since with the same allocation weights, the next day's return is decreasing, so we need to maximize the returns
                 print("Expected return A is greater than expected return B, maximizing returns")
                 optimal_weights = optimizer.maximize_returns(max_volatility)

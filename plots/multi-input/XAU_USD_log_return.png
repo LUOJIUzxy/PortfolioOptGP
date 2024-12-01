@@ -4,7 +4,7 @@
 %%Invocation: gs -dBATCH -dNOPAUSE -r6000 -sDEVICE=ps2write -dEPSCrop -sOutputFile=? ?
 %%Creator: GPL Ghostscript 10030 (ps2write)
 %%LanguageLevel: 2
-%%CreationDate: D:20241201001105+01'00'
+%%CreationDate: D:20241201193556+01'00'
 %%EndComments
 %%BeginProlog
 save
@@ -8825,7 +8825,7 @@ endobj
 endobj
 %%EndPageSetup
 5 0 obj
-<</Length 28925>>stream
+<</Length 28953>>stream
 q 0.012 0 0 0.012 0 0 cm
 false setstrokeadjust
 q
@@ -10530,8 +10530,8 @@ S
 Q
 q
 7152.75 8306.75 64947.2 26055.2 re W n
+[ 462.5 200 ] 0 d
 125 w
-2 J
 1 j
 0.399902 0.761719 0.646484 rg
 0.399902 0.761719 0.646484 RG
@@ -10635,8 +10635,8 @@ W n
 7986.07 9473.38 l
 7986.07 9251.16 8097.18 9140.04 8319.41 9140.04 c
 f
+[ 462.5 200 ] 0 d
 125 w
-2 J
 1 j
 0.399902 0.761719 0.646484 rg
 0.399902 0.761719 0.646484 RG

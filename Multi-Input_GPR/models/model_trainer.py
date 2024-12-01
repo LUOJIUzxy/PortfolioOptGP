@@ -19,7 +19,7 @@ class ModelTrainer:
         gpflow.set_trainable(model.likelihood, False)
         opt = gpflow.optimizers.Scipy()
         opt.minimize(model.training_loss, model.trainable_variables)
-        #print_summary(model)
+        print_summary(model)
 
         return model
     

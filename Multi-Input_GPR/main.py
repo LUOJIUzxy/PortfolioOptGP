@@ -267,7 +267,7 @@ class MultiInputGPR:
     def run_step_3(self) -> None:
         #1. Fetch the actual values of to-be-predicted stock data(e.g. APPL stock price)
         X_AAPL_tf, Y_AAPL_tf, AAPL_dates, (AAPL_mean, AAPL_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
-        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
+        X_AAPL_full_tf, Y_AAPL_full_tf, AAPL_full_dates, (AAPL_full_mean, AAPL_full_std), (x_mean_full, x_std_full) = self.data_handler.process_data("Stocks", self.ticker, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
 
         #2. Fetch input data(e.g. Brent Oil / MSFT stock price)
         # X columns vector for training
@@ -277,16 +277,16 @@ class MultiInputGPR:
         for feature in self.features:
             if feature == "Brent_Oil" or feature == "DXY" or feature == "XAU_USD":
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std)= self.data_handler.process_data("Commodities", feature, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
             elif feature == "SP500" or feature == "NasDaq100":
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks/index", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks/Index", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks/Index", feature, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
             elif feature == "BTC":
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=False, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=False, isDenoised=False, isFiltered=False)
             else:
                 X_tf, Y_tf, dates, (y_mean, y_std), (x_mean, x_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.train_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
-                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, "return", isFetch=True, isDenoised=False, isFiltered=False)
+                X_full_tf, Y_full_tf, full_dates, (y_full_mean, y_full_std), (x_full_mean, x_full_std) = self.data_handler.process_data("Stocks", feature, "d", self.train_start_date, self.test_end_date, self.predict_Y, isFetch=True, isDenoised=False, isFiltered=False)
             visualizer = Visualizer()
             visualizer.plot_data(X_tf, Y_tf, dates, title=f'{feature} - Day', mean=y_mean, std=y_std, filename=f'../plots/multi-input/{feature}_log_return.png')
 
@@ -320,7 +320,7 @@ class MultiInputGPR:
         for composite_kernel in self.kernel_combinations:
             if self.isFixed:
                 model = gpflow.models.GPR(
-                    (X, Y), kernel=deepcopy(composite_kernel), noise_variance=1e-3
+                    (X, Y), kernel=deepcopy(composite_kernel), noise_variance=1e-5
                 )
                 
                 model = ModelTrainer.train_model(model)
@@ -345,10 +345,7 @@ class MultiInputGPR:
         Y_actual = Y_AAPL_full_tf * AAPL_full_std + AAPL_full_mean
         f_cov = f_cov * AAPL_full_std ** 2
 
-        # Calculate denormalised mse for all train and test data
-        # Actually should only calculate the test period data
-        mse_test = mean_squared_error(Y_actual, f_mean.numpy())
-        print(f"Mean Squared Error DeNormalized: {mse_test:.4f}")
+        X_AAPL_full_tf = X_AAPL_full_tf * x_std + x_mean
 
         visualizer.plot_GP(X_AAPL_full_tf, Y_actual, f_mean, f_cov, title=f"{self.ticker} / Day, predicted by features", filename=f'../plots/multi-input/future_predictions_{self.ticker}.png')
 
@@ -480,35 +477,7 @@ class MultiInputGPR:
         print(f"Mean Squared Error: {mse:.4f}")
 
 
-# if __name__ == "__main__":
-#     # Define your parameters
-#     train_start_date = '2024-02-10'
-#     train_end_date = '2024-05-10'
-#     test_start_date = '2024-05-13'
-#     test_end_date = '2024-05-17'
-    
-#     ticker = 'MSFT'  # Example ticker
-#     assets = ['Brent_Oil', 'DXY', 'BTC', 'XAU_USD']
-    
-#     # Initialize the MultiInputGPR instance
-#     multiInputGPR = MultiInputGPR(
-#         ticker=ticker, 
-#         features=assets,
-#         train_start_date=train_start_date, 
-#         train_end_date=train_end_date, 
-#         test_start_date=test_start_date,
-#         test_end_date=test_end_date,
-#         kernel_combinations=[(gpflow.kernels.Exponential, gpflow.kernels.Exponential)],
-#         window_size=3,
-#         kernels=[gpflow.kernels.Exponential()],
-#         threshold=0.30,
-#         predict_Y='close',
-#         removal_percentage=0.1,
-#         isFixedLikelihood=False
-#     )
-    
-#     # Call the run_step_2 method
-#     multiInputGPR.run_step_2()
+
 
 if __name__ == "__main__":
     train_start_date = '2024-02-10'
@@ -518,7 +487,7 @@ if __name__ == "__main__":
 
     ticker1 = 'JPM'
     ticker2 = 'MSFT'
-    ticker3 = 'BA'
+    ticker3 = 'COST'
     ticker4 = 'HLT'
     ticker5 = 'JNJ'
     #assets = ['COST', 'AAPL', 'GOOGL', 'JNJ', 'XOM', 'PLD', 'NEE', 'Brent_Oil', 'DXY', 'BAC', 'SP500', 'NasDaq100']
@@ -578,9 +547,9 @@ if __name__ == "__main__":
             threshold=0.30,
             predict_Y=predict_Y,
             removal_percentage=0.1,
-            isFixedLikelihood=False
+            isFixedLikelihood=True
         )
-        predicted = multiInputGPR.run_step_3()
+        predicted = multiInputGPR.run_step_4()
         
         # [ [asset1 over 5 days], [asset2 over 5 days], ...]
         predicted_values.append(predicted[0])

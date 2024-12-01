@@ -440,16 +440,9 @@ class StockPredictor:
             # print(f'Optimal weights for {ticker} (SVGP): alpha = {alpha_opt_svgp}, beta = {beta_opt_svgp}')
 
 # Parameters
-ticker1 = 'AAPL'
-ticker2 = 'MSFT'
-ticker3 = 'NFLX'
-ticker4 = 'META'
-ticker5 = 'TSLA'
-ticker7 = 'NVDA'
-ticker8 = 'PYPL'
-ticker9 = 'BAC'
-ticker10 = 'ARM'
-ticker11 = 'S&P500'
+ticker1 = 'BA'
+ticker2 = 'JNJ'
+
 
 tickers = [ticker1, ticker2]
 train_start_date = '2024-02-01'
@@ -887,21 +880,11 @@ class StockPredictor:
            
 
 # Parameters
-ticker1 = 'AAPL'
-ticker2 = 'MSFT'
-ticker3 = 'NFLX'
-ticker4 = 'META'
-ticker5 = 'TSLA'
-ticker7 = 'NVDA'
-ticker8 = 'PYPL'
-ticker9 = 'BAC'
-ticker10 = 'ARM'
-ticker11 = 'JPM'
-ticker3 = 'AMGN'
-ticker4 = 'HLT'
-ticker5 = 'COST'
+ticker1 = 'JNJ'
+ticker2 = 'BA'
 
-tickers = [ticker1, ticker2, ticker3, ticker4, ticker5, ticker7, ticker8, ticker9, ticker10, ticker11]
+
+tickers = [ticker1, ticker2]
 train_start_date = '2024-02-01'
 train_end_date = '2024-04-26'
 test_start_date = '2024-04-29'

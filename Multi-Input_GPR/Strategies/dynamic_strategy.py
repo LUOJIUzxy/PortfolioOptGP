@@ -44,6 +44,7 @@ class DynamicStrategy(Strategy):
 
         # Generate samples from the multivariate normal distributions
         # Incorporate covariance matrices，not just diagonal matrices(correlation as well)
+        # five assets joint distribution, contribute to my portfolio
         samples_A = multivariate_normal.rvs(mean=mu_A, cov=cov_A, size=num_samples)
         samples_B = multivariate_normal.rvs(mean=mu_B, cov=cov_B, size=num_samples)
 
